@@ -1,0 +1,2666 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tali Service - Dashboard</title>
+    <meta name="theme-color" content="#111827">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="TaliAgent">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { 
+            --bg: #0f172a; 
+            --card: #1e293b; 
+            --border: #334155; 
+            --accent: #3b82f6; 
+            --accent-hover: #2563eb; 
+            --success: #22c55e; 
+            --warning: #f59e0b; 
+            --danger: #ef4444;
+            --text: #f8fafc; 
+            --muted: #94a3b8;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column;
+        }
+
+        @media (display-mode: standalone) {
+            body { height: 100vh; }
+        }
+        
+        /* Header mit Quick Actions */
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 0.5rem 1rem; 
+            background: var(--card); 
+            border-bottom: 1px solid var(--border);
+        }
+        .header h1 { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+        .header h1 span { font-size: 1.2rem; }
+        
+        /* Quick Actions */
+        .quick-actions { display: flex; gap: 0.5rem; align-items: center; }
+        .quick-btn {
+            padding: 0.4rem 0.75rem;
+            background: var(--border);
+            border: none;
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.15s;
+        }
+        .quick-btn:hover { background: var(--accent); }
+        .quick-btn.active { background: var(--success); }
+        .quick-btn.syncing { background: var(--warning); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%; 
+            background: var(--success);
+        }
+        .status-dot.offline { background: var(--danger); }
+        
+        /* Main Layout */
+        .main { display: flex; flex: 1; min-height: 0; }
+        
+        /* Sidebar - Kunden & Dokumente */
+        .sidebar {
+            width: 260px;
+            background: var(--card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sidebar-section { padding: 0.5rem; border-bottom: 1px solid var(--border); }
+        .sidebar-section h3 {
+            font-size: 0.7rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.4rem;
+            padding: 0 0.5rem;
+        }
+        
+        select {
+            width: 100%;
+            padding: 0.5rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        select:focus { border-color: var(--accent); outline: none; }
+        
+        /* Dokument-Liste */
+        .doc-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+        .doc-tab-bar {
+            display: flex;
+            gap: 0.25rem;
+            padding: 0 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .doc-tab {
+            flex: 1;
+            padding: 0.4rem;
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .doc-tab:hover { background: var(--border); color: var(--text); }
+        .doc-tab.active { background: var(--accent); color: white; }
+        
+        .doc-item {
+            padding: 0.5rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 0.4rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.15s;
+        }
+        .doc-item:hover { border-color: var(--accent); }
+        .doc-item.selected { border-color: var(--success); background: rgba(34, 197, 94, 0.1); }
+        .doc-item.related { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+        .doc-item.related::before {
+            content: '↳';
+            position: absolute;
+            left: -0.8rem;
+            color: var(--accent);
+            font-weight: bold;
+        }
+        .doc-item { position: relative; }
+        .doc-item .doc-header { display: flex; justify-content: space-between; margin-bottom: 0.2rem; }
+        .doc-item .doc-number { font-weight: 600; }
+        .doc-item .doc-type-badge {
+            font-size: 0.6rem;
+            padding: 0.1rem 0.3rem;
+            border-radius: 4px;
+            background: var(--accent);
+            color: white;
+            margin-left: 0.3rem;
+        }
+        .doc-item .doc-type-badge.downpayment { background: var(--warning); }
+        .doc-item .doc-status {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 8px;
+            background: var(--border);
+        }
+        .doc-item .doc-status.paid { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .doc-item .doc-status.open { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .doc-item .doc-status.accepted { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .doc-item .doc-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.75rem; }
+        .doc-item .doc-amount { color: var(--success); }
+        .doc-item .doc-relation {
+            font-size: 0.65rem;
+            color: var(--accent);
+            margin-top: 0.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        
+        /* Zugehörige Rechnungen Section */
+        .related-section {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px dashed var(--accent);
+            border-radius: 6px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .related-section.active { display: block; }
+        .related-section h4 {
+            font-size: 0.7rem;
+            color: var(--accent);
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .related-section .related-summary {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-bottom: 0.3rem;
+        }
+        
+        .empty-docs { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 1rem; }
+        
+        /* Chat-Bereich */
+        .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        
+        /* Chat Header mit Session */
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+        }
+        .chat-header select { flex: 1; max-width: 200px; }
+        .chat-header .btn-sm {
+            padding: 0.4rem 0.6rem;
+            background: var(--accent);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .chat-header .btn-sm:hover { background: var(--accent-hover); }
+        .chat-header .btn-sm.danger { background: var(--danger); }
+        .chat-header .btn-sm.danger:hover { background: #dc2626; }
+        
+        /* Context Badge */
+        .context-badge {
+            display: none;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.3rem 0.6rem;
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid var(--success);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--success);
+        }
+        .context-badge.active { display: flex; }
+        .context-badge button {
+            background: none;
+            border: none;
+            color: var(--success);
+            cursor: pointer;
+            padding: 0;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        
+        /* Messages */
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .message {
+            max-width: 85%;
+            padding: 0.6rem 0.8rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+            position: relative;
+        }
+        .message.user {
+            background: var(--accent);
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .message.assistant {
+            background: var(--card);
+            border: 1px solid var(--border);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .message a { color: #93c5fd; }
+        
+        /* Nachricht-Aktionen */
+        .message-actions {
+            position: absolute;
+            top: -8px;
+            right: 4px;
+            display: none;
+            gap: 2px;
+            padding: 2px;
+            background: var(--card);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .message.confirm-delete {
+            box-shadow: 0 0 0 2px var(--danger);
+        }
+        .msg-action-btn.confirm {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm.confirm {
+            background: var(--danger) !important;
+            color: white !important;
+        }
+
+        .inline-confirm {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            border-radius: 10px;
+            margin-left: auto;
+        }
+        .inline-confirm.active { display: flex; }
+        .inline-confirm .text {
+            font-size: 0.85rem;
+            color: var(--text);
+            white-space: nowrap;
+        }
+        .inline-confirm .btn {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            padding: 4px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .inline-confirm .btn.primary {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+        .message:hover .message-actions { display: flex; }
+        .message.assistant .message-actions { right: auto; left: 4px; }
+        .msg-action-btn {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .msg-action-btn:hover { background: var(--border); color: var(--text); }
+        .msg-action-btn.delete:hover { background: var(--danger); color: white; }
+        .msg-action-btn.edit:hover { background: var(--warning); color: white; }
+        .msg-action-btn.copy:hover { background: var(--success); color: white; }
+        .msg-action-btn.resend:hover { background: var(--accent); color: white; }
+        
+        /* Bearbeitungsmodus */
+        .message.editing {
+            background: rgba(245, 158, 11, 0.1);
+            border: 2px solid var(--warning);
+        }
+        .message .edit-textarea {
+            width: 100%;
+            min-height: 60px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            resize: vertical;
+            margin-bottom: 0.5rem;
+        }
+        .message .edit-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+        .message .edit-buttons button {
+            padding: 0.3rem 0.6rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .message .edit-buttons .save-btn { background: var(--success); color: white; }
+        .message .edit-buttons .cancel-btn { background: var(--border); color: var(--text); }
+        
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--muted);
+            gap: 0.5rem;
+        }
+        .empty-state .icon { font-size: 2rem; opacity: 0.5; }
+        
+        /* Typing */
+        .typing {
+            display: none;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.4rem 0.6rem;
+            background: var(--card);
+            border-radius: 8px;
+            width: fit-content;
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin: 0 1rem;
+        }
+        .typing.active { display: flex; }
+        .typing-dot {
+            width: 5px; height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        /* Input */
+        .input-area {
+            padding: 0.5rem 1rem;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.5rem;
+        }
+        textarea {
+            flex: 1;
+            padding: 0.6rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.9rem;
+            resize: none;
+            font-family: inherit;
+        }
+        textarea:focus { border-color: var(--accent); outline: none; }
+        textarea::placeholder { color: var(--muted); }
+        .send-btn {
+            padding: 0.6rem 1rem;
+            background: var(--accent);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .send-btn:hover { background: var(--accent-hover); }
+        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        /* Schnellaktionen */
+        .quick-actions-bar {
+            display: none;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .quick-actions-bar.active { display: flex; }
+        .quick-action {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 1.3rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .quick-action:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            transform: scale(1.1);
+        }
+        .quick-action::after {
+            content: attr(title);
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card);
+            color: var(--text);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            border: 1px solid var(--border);
+            z-index: 10;
+        }
+        .quick-action:hover::after { opacity: 1; }
+        .quick-action.highlight {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: var(--accent);
+        }
+        
+        /* Upload Button & Area */
+        .upload-btn {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .upload-btn:hover { background: var(--accent); border-color: var(--accent); }
+        .upload-btn.has-file { 
+            background: rgba(245, 158, 11, 0.2); 
+            border-color: var(--warning); 
+            color: var(--warning);
+            animation: pulse-gold 1.5s infinite;
+        }
+        @keyframes pulse-gold {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+        }
+        .upload-preview {
+            display: none;
+            padding: 0.5rem 0.8rem;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1));
+            border: 2px solid var(--warning);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            align-items: center;
+            gap: 0.5rem;
+            margin-right: auto;
+            color: #fbbf24;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+        .upload-preview.active { display: flex; }
+        .upload-preview .file-icon { font-size: 1.2rem; }
+        .upload-preview .filename { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .upload-preview .file-size { font-size: 0.7rem; color: var(--muted); }
+        .upload-preview .remove-file { 
+            background: rgba(239, 68, 68, 0.2); 
+            border: 1px solid var(--danger); 
+            color: var(--danger); 
+            cursor: pointer; 
+            font-size: 0.9rem; 
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            margin-left: 0.3rem;
+            transition: all 0.15s;
+        }
+        .upload-preview .remove-file:hover { background: var(--danger); color: white; }
+        
+        /* Datei-Nachricht im Chat */
+        .message.file-message {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+            border: 1px solid var(--warning);
+        }
+        .message .file-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.6rem;
+            background: rgba(245, 158, 11, 0.2);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #fbbf24;
+            margin-bottom: 0.4rem;
+        }
+        
+        /* Modal für neuen Kunden */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid var(--border);
+        }
+        .modal-content h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .modal-content .form-group { margin-bottom: 0.75rem; }
+        .modal-content label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 0.3rem;
+        }
+        .modal-content input {
+            width: 100%;
+            padding: 0.5rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+        .modal-content input:focus { border-color: var(--accent); outline: none; }
+        .modal-buttons { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .modal-buttons button {
+            flex: 1;
+            padding: 0.6rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .modal-buttons .btn-cancel { background: var(--border); color: var(--text); }
+        .modal-buttons .btn-save { background: var(--accent); color: white; }
+        
+        /* Kundentyp Toggle */
+        .customer-type-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .type-btn {
+            flex: 1;
+            padding: 0.6rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .type-btn:hover {
+            border-color: var(--accent);
+        }
+        .type-btn.active {
+            border-color: var(--accent);
+            background: rgba(74, 144, 226, 0.15);
+            color: var(--text);
+            font-weight: 500;
+        }
+        .gewerbe-fields {
+            border-top: 1px solid var(--border);
+            padding-top: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        .field-hint {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 0.25rem;
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.75rem 1rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 200;
+            animation: slideIn 0.3s ease;
+        }
+        .toast.active { display: flex; }
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--danger); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.8); } }
+        
+        /* Customer Match Suggestion */
+        .customer-match-suggestion {
+            display: none;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05));
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            padding: 0.75rem;
+            margin: 0.5rem 1rem;
+            animation: slideDown 0.3s ease;
+        }
+        .customer-match-suggestion.active { display: block; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .customer-match-suggestion h4 {
+            font-size: 0.85rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .match-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 0.4rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .match-item:hover { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+        .match-item .match-info { flex: 1; }
+        .match-item .match-name { font-weight: 600; font-size: 0.85rem; }
+        .match-item .match-details { font-size: 0.75rem; color: var(--muted); }
+        .match-item .match-score {
+            padding: 0.2rem 0.5rem;
+            background: var(--success);
+            color: white;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .match-item .match-score.medium { background: var(--warning); }
+        .match-item .match-score.low { background: var(--border); color: var(--text); }
+        .dismiss-match {
+            display: block;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 0.5rem;
+            cursor: pointer;
+        }
+        .dismiss-match:hover { color: var(--danger); }
+        
+        /* Document History Sidebar Section */
+        .doc-history-section {
+            border-top: 1px solid var(--border);
+            padding: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .doc-history-section h3 {
+            font-size: 0.7rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.4rem;
+            padding: 0 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .uploaded-doc-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.5rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 0.3rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .uploaded-doc-item:hover { border-color: var(--accent); }
+        .uploaded-doc-item .doc-icon { font-size: 1rem; }
+        .uploaded-doc-item .doc-info { flex: 1; overflow: hidden; }
+        .uploaded-doc-item .doc-name { 
+            font-weight: 500; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+        }
+        .uploaded-doc-item .doc-time { font-size: 0.65rem; color: var(--muted); }
+        .uploaded-doc-item .doc-extracted { 
+            font-size: 0.6rem; 
+            color: var(--success); 
+            background: rgba(34, 197, 94, 0.1);
+            padding: 0.1rem 0.3rem;
+            border-radius: 4px;
+        }
+        
+        /* Chat History Loading Indicator */
+        .history-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+        .history-loading .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Enhanced Quick Actions */
+        .quick-actions-bar .divider {
+            width: 1px;
+            height: 30px;
+            background: var(--border);
+            margin: 0 0.25rem;
+        }
+        
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+            padding: 0.4rem 0.6rem;
+            background: var(--border);
+            border: none;
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .mobile-menu-btn:hover { background: var(--accent); }
+        
+        /* Sidebar Overlay für Mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 49;
+        }
+        .sidebar-overlay.active { display: block; }
+        
+        /* Close Button für Mobile Sidebar */
+        .sidebar-close {
+            display: none;
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 32px;
+            height: 32px;
+            background: var(--border);
+            border: none;
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+        .sidebar-close:hover { background: var(--danger); }
+        
+        /* Responsive - Tablet */
+        @media (max-width: 900px) {
+            .sidebar { width: 220px; }
+            .chat-area { min-width: 0; }
+            .quick-btn span.text { display: none; }
+            .header h1 span.title-text { display: none; }
+        }
+        
+        /* Responsive - Mobile */
+        @media (max-width: 768px) {
+            .header { padding: 0.5rem; }
+            .header h1 { font-size: 0.9rem; }
+            
+            .mobile-menu-btn { display: flex; }
+            
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                z-index: 50;
+                transition: left 0.3s ease;
+            }
+            .sidebar.open { left: 0; }
+            .sidebar-close { display: flex; }
+            
+            .main { flex-direction: column; }
+            .chat-area { 
+                flex: 1;
+                min-height: 0;
+            }
+            
+            .input-area { padding: 0.5rem; }
+            textarea { font-size: 16px; } /* Verhindert iOS Zoom */
+            
+            .quick-actions-bar { 
+                padding: 0.4rem; 
+                overflow-x: auto;
+                flex-wrap: nowrap;
+            }
+            .quick-action { 
+                padding: 0.5rem 0.8rem; 
+                font-size: 0.8rem;
+            }
+            
+            .message { 
+                max-width: 90%; 
+                font-size: 0.9rem;
+            }
+            
+            .modal-content { 
+                width: 95%; 
+                padding: 1rem;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            
+            .doc-item { padding: 0.6rem; }
+            .doc-tab { padding: 0.5rem; font-size: 0.8rem; }
+            
+            .toast { 
+                left: 1rem; 
+                right: 1rem; 
+                bottom: 0.5rem;
+            }
+        }
+        
+        /* Responsive - Kleine Handys */
+        @media (max-width: 480px) {
+            .header h1 { font-size: 0.85rem; }
+            .quick-btn { padding: 0.35rem 0.5rem; font-size: 0.75rem; }
+            
+            .message { 
+                max-width: 95%;
+                padding: 0.5rem 0.7rem;
+            }
+            
+            .quick-action { 
+                padding: 0.4rem 0.6rem;
+                font-size: 0.75rem;
+            }
+            
+            .input-area { gap: 0.3rem; }
+            .send-btn { 
+                padding: 0.5rem 0.8rem; 
+                font-size: 0.85rem;
+            }
+        }
+        
+        /* Touch-friendly für alle mobilen Geräte */
+        @media (hover: none) and (pointer: coarse) {
+            .quick-btn, .quick-action, .doc-item, .doc-tab, .send-btn, .type-btn {
+                min-height: 44px;
+            }
+            select, input, textarea {
+                min-height: 44px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header mit Quick Actions -->
+    <header class="header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()" title="Menü öffnen">☰</button>
+            <h1><span>⚡</span> <span class="title-text">Tali Service</span></h1>
+        </div>
+        <div class="quick-actions">
+            <button class="quick-btn" onclick="syncCustomers()" id="syncBtn" title="Kunden synchronisieren">
+                🔄 <span class="text">Sync</span>
+            </button>
+            <button class="quick-btn" onclick="showNewCustomerModal()" title="Neuen Kunden anlegen">
+                ➕ <span class="text">Kunde</span>
+            </button>
+            <button class="quick-btn" onclick="window.location.reload()" title="Seite neu laden">
+                🔃
+            </button>
+            <div class="status-dot" id="statusDot" title="Server-Status"></div>
+        </div>
+    </header>
+    
+    <main class="main">
+        <!-- Sidebar Overlay für Mobile -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+        
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
+            <div class="sidebar-section">
+                <h3>Kunde</h3>
+                <select id="customerSelect">
+                    <option value="">Kunde wählen...</option>
+                </select>
+            </div>
+            
+            <div class="sidebar-section" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <div class="doc-tab-bar">
+                    <button class="doc-tab active" data-type="quotations" onclick="switchDocTab('quotations')">Angebote</button>
+                    <button class="doc-tab" data-type="invoices" onclick="switchDocTab('invoices')">Rechnungen</button>
+                </div>
+                <div class="doc-list" id="docList">
+                    <div class="empty-docs">Kunde wählen...</div>
+                </div>
+            </div>
+            
+            <!-- Document History Section -->
+            <div class="doc-history-section" id="docHistorySection" style="display: none;">
+                <h3>
+                    📁 Hochgeladene Dokumente
+                    <span id="docHistoryCount" style="font-size: 0.65rem; background: var(--accent); color: white; padding: 0.1rem 0.4rem; border-radius: 10px;">0</span>
+                </h3>
+                <div id="docHistoryList"></div>
+            </div>
+        </aside>
+        
+        <!-- Chat -->
+        <section class="chat-area">
+            <div class="chat-header">
+                <select id="sessionSelect" disabled>
+                    <option value="">Auftrag wählen...</option>
+                </select>
+                <button class="btn-sm" onclick="createNewSession()" id="newSessionBtn" disabled>+ Neu</button>
+                <button class="btn-sm danger" onclick="deleteCurrentSession()" id="deleteBtn" disabled>🗑️</button>
+                <button class="btn-sm" onclick="refreshChat()" id="refreshBtn" title="Chat aktualisieren">🔄</button>
+                <button class="btn-sm" onclick="clearChat()" id="clearBtn" title="Chat leeren">🧹</button>
+                <div class="inline-confirm" id="inlineConfirm">
+                    <span class="text" id="inlineConfirmText">Wirklich?</span>
+                    <button class="btn" onclick="inlineConfirmCancel()">Abbrechen</button>
+                    <button class="btn primary" id="inlineConfirmOk" onclick="inlineConfirmOk()">Löschen</button>
+                </div>
+                <div class="context-badge" id="contextBadge">
+                    <span>📄</span>
+                    <span id="contextText">-</span>
+                    <button onclick="clearContext()">×</button>
+                </div>
+            </div>
+            
+            <div class="messages" id="messages">
+                <div class="empty-state">
+                    <span class="icon">🤖</span>
+                    <p><strong>Allgemeiner Chat</strong></p>
+                    <p style="font-size: 0.8rem; color: var(--muted);">Frag mich alles über Elektro!</p>
+                </div>
+            </div>
+            
+            <div class="typing" id="typing">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span>AI antwortet...</span>
+            </div>
+            
+            <!-- Customer Match Suggestion (appears after PDF upload) -->
+            <div class="customer-match-suggestion" id="customerMatchSuggestion">
+                <h4>🔍 Mögliche Kundenzuordnung erkannt</h4>
+                <div id="customerMatchList"></div>
+                <span class="dismiss-match" onclick="dismissCustomerMatch()">❌ Keine Zuordnung</span>
+            </div>
+            
+            <div class="quick-actions-bar" id="quickActions">
+                <button class="quick-action" onclick="quickAction('preise')" title="Preise">💰</button>
+                <button class="quick-action" onclick="quickAction('angebot')" title="Angebot">📋</button>
+                <button class="quick-action" onclick="quickAction('rechnung')" title="Rechnung">🧾</button>
+                <button class="quick-action" onclick="quickAction('abschlag')" title="Abschlag">📊</button>
+                <div class="divider"></div>
+                <button class="quick-action" onclick="quickAction('status')" title="Offene Posten">📈</button>
+                <button class="quick-action" onclick="quickAction('analyse')" title="Analysieren">🔍</button>
+                <button class="quick-action" onclick="quickAction('steuer')" title="Steuer-IDs">📝</button>
+                <div class="divider"></div>
+                <button class="quick-action" onclick="quickAction('hilfe')" title="Hilfe">❓</button>
+            </div>
+            
+            <div class="input-area">
+                <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.txt,.csv,.xlsx,.xls,.doc,.docx" style="display:none" onchange="handleFileSelect(event)">
+                <button class="upload-btn" id="uploadBtn" onclick="document.getElementById('fileInput').click()" title="Datei hochladen">📎</button>
+                <div class="upload-preview" id="uploadPreview">
+                    <span class="file-icon" id="fileIcon">📄</span>
+                    <div style="display:flex;flex-direction:column;">
+                        <span class="filename" id="uploadFilename"></span>
+                        <span class="file-size" id="uploadFileSize"></span>
+                    </div>
+                    <button class="remove-file" onclick="clearUpload()">✕</button>
+                </div>
+                <textarea id="messageInput" placeholder="Nachricht... (Enter = Senden)" rows="1"></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+            </div>
+        </section>
+    </main>
+    
+    <!-- Modal: Neuer Kunde -->
+    <div class="modal" id="newCustomerModal">
+        <div class="modal-content">
+            <h2>➕ Neuer Kunde</h2>
+            <div class="form-group">
+                <label>Kundentyp *</label>
+                <div class="customer-type-toggle">
+                    <button type="button" id="typePrivat" class="type-btn active" onclick="setCustomerType('privat')">👤 Privat</button>
+                    <button type="button" id="typeGewerbe" class="type-btn" onclick="setCustomerType('gewerbe')">🏢 Gewerbe</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Name *</label>
+                <input type="text" id="newName" placeholder="Firma oder Name">
+            </div>
+            <div class="form-group">
+                <label>E-Mail</label>
+                <input type="email" id="newEmail" placeholder="email@beispiel.de">
+            </div>
+            <div class="form-group">
+                <label>Telefon</label>
+                <input type="tel" id="newPhone" placeholder="+49 123 456789">
+            </div>
+            <div class="form-group">
+                <label>Adresse</label>
+                <input type="text" id="newAddress" placeholder="Straße Nr.">
+            </div>
+            <div class="form-group">
+                <label>PLZ / Ort</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="newZip" placeholder="PLZ" style="width: 80px;">
+                    <input type="text" id="newCity" placeholder="Stadt" style="flex: 1;">
+                </div>
+            </div>
+            <!-- Gewerbe-spezifische Felder (nur sichtbar bei Gewerbe) -->
+            <div id="gewerbeFields" class="gewerbe-fields" style="display: none;">
+                <div class="form-group">
+                    <label>USt-IdNr.</label>
+                    <input type="text" id="newVatId" placeholder="DE123456789">
+                    <small class="field-hint">Für innergemeinschaftliche Leistungen (§ 13b UStG)</small>
+                </div>
+                <div class="form-group">
+                    <label>Steuernummer</label>
+                    <input type="text" id="newTaxNumber" placeholder="12/345/67890">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="hideNewCustomerModal()">Abbrechen</button>
+                <button class="btn-save" onclick="createNewCustomer()">Anlegen</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span id="toastIcon">✅</span>
+        <span id="toastText">Erfolgreich!</span>
+    </div>
+    
+    <script>
+        // Dynamische API-URL: localhost für lokale Entwicklung, ansonsten aktuelle Host-Adresse
+        const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://127.0.0.1:8000' 
+            : `http://${window.location.hostname}:8000`;
+        let state = {
+            customerId: null,
+            sessionId: null,
+            customer: null,
+            customers: {},
+            docType: 'quotations',
+            selectedDoc: null,
+            quotations: [],  // Cache für Angebote
+            invoices: [],    // Cache für Rechnungen
+            chatHistory: [], // Multi-turn conversation history
+            uploadedDocuments: [], // Track uploaded documents for current customer
+            lastExtractedText: null, // Store last PDF extracted text for matching
+            lastExtractedData: null  // Store last PDF extracted data (VAT, Tax, etc.)
+        };
+
+        // Mobile Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+            document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+        }
+        
+        // Sidebar schließen bei Auswahl auf Mobile
+        function closeSidebarOnMobile() {
+            if (window.innerWidth <= 768) {
+                toggleSidebar();
+            }
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', init);
+        
+        async function init() {
+            await loadCustomers();
+            setupEvents();
+            // Allgemeinen Chat-Modus aktivieren (ohne Kunde)
+            enableGeneralChat();
+        }
+        
+        function enableGeneralChat() {
+            state.generalMode = true;
+            state.sessionId = null;
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            
+            // Lade gespeicherte allgemeine Chat-Nachrichten
+            loadMessages();
+        }
+
+        // Events
+        function setupEvents() {
+            document.getElementById('customerSelect').addEventListener('change', onCustomerChange);
+            document.getElementById('sessionSelect').addEventListener('change', onSessionChange);
+            document.getElementById('messageInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+            });
+        }
+
+        // Kunden laden
+        async function loadCustomers() {
+            try {
+                const res = await fetch(`${API}/customers`);
+                if (!res.ok) throw new Error();
+                const customers = await res.json();
+                
+                const select = document.getElementById('customerSelect');
+                select.innerHTML = '<option value="">Kunde wählen...</option>';
+                customers.forEach(c => {
+                    state.customers[c.id] = c;
+                    select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                });
+                
+                document.getElementById('statusDot').classList.remove('offline');
+            } catch (e) {
+                document.getElementById('statusDot').classList.add('offline');
+                showToast('Server nicht erreichbar', 'error');
+            }
+        }
+
+        async function onCustomerChange(e) {
+            if (!e.target.value) { resetUI(); return; }
+            
+            state.customerId = e.target.value;
+            state.customer = state.customers[state.customerId];
+            
+            await Promise.all([loadSessions(), loadDocs(), loadCustomerChatHistory(), loadCustomerDocuments()]);
+            
+            document.getElementById('sessionSelect').disabled = false;
+            document.getElementById('newSessionBtn').disabled = false;
+            
+            // WICHTIG: Aktiviere Kunden-Chat-Modus (ohne Session)
+            // User kann jetzt allgemein über den Kunden chatten
+            state.sessionId = null;
+            enableCustomerChat();
+            
+            // Sidebar auf Mobile schließen nach Auswahl
+            closeSidebarOnMobile();
+        }
+        
+        function enableCustomerChat() {
+            // Kunden-Chat: Kunde ist ausgewählt, aber keine Session
+            // Man kann allgemein über den Kunden sprechen
+            const customerName = state.customer ? state.customer.name : 'Kunde';
+            
+            // Prüfe ob bereits Chat-Historie vorhanden ist
+            if (state.chatHistory.length === 0) {
+                document.getElementById('messages').innerHTML = `
+                    <div class="empty-state">
+                        <span class="icon">👤</span>
+                        <p><strong>Chat über ${customerName}</strong></p>
+                        <p style="font-size: 0.8rem; color: var(--muted);">Frage mich alles über diesen Kunden!<br>Oder wähle einen Auftrag für spezifische Aufträge.</p>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('messageInput').placeholder = `Frage über ${customerName}...`;
+        }
+
+        function resetUI() {
+            state.customerId = null;
+            state.sessionId = null;
+            state.customer = null;
+            state.selectedDoc = null;
+            state.chatHistory = [];
+            state.uploadedDocuments = [];
+            
+            document.getElementById('sessionSelect').disabled = true;
+            document.getElementById('sessionSelect').innerHTML = '<option value="">Auftrag wählen...</option>';
+            document.getElementById('newSessionBtn').disabled = true;
+            document.getElementById('deleteBtn').disabled = true;
+            document.getElementById('quickActions').classList.remove('active');
+            document.getElementById('docList').innerHTML = '<div class="empty-docs">Kunde wählen...</div>';
+            document.getElementById('docHistorySection').style.display = 'none';
+            clearContext();
+            dismissCustomerMatch();;
+            
+            // Allgemeinen Chat wieder aktivieren
+            enableGeneralChat();
+        }
+
+        // Sessions
+        async function loadSessions() {
+            try {
+                const res = await fetch(`${API}/chat/customer/${state.customerId}/sessions`);
+                const sessions = await res.json();
+                
+                const select = document.getElementById('sessionSelect');
+                select.innerHTML = '<option value="">Kein Auftrag (Allgemein)</option>';
+                
+                if (sessions.length > 0) {
+                    sessions.forEach(s => {
+                        select.innerHTML += `<option value="${s.id}">${s.title || 'Auftrag #' + s.id}</option>`;
+                    });
+                    // Nicht automatisch erste Session auswählen - erstmal allgemein
+                    // select.value = sessions[0].id;
+                    // state.sessionId = sessions[0].id;
+                    // await loadMessages();
+                    // enableChat();
+                }
+                // Zeige Kunden-Chat-Modus (ohne Session)
+                enableCustomerChat();
+            } catch (e) { console.error(e); }
+        }
+
+        async function onSessionChange(e) {
+            if (!e.target.value) {
+                document.getElementById('deleteBtn').disabled = true;
+                return;
+            }
+            state.sessionId = parseInt(e.target.value);
+            await loadMessages();
+            enableChat();
+        }
+
+        async function createNewSession() {
+            if (!state.customerId) return;
+            const title = prompt('Auftragsname:', 'Auftrag ' + new Date().toLocaleDateString('de-DE'));
+            if (!title) return;
+            
+            try {
+                const res = await fetch(`${API}/chat/sessions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customer_id: state.customerId, title: title, topic: 'Elektroauftrag' })
+                });
+                const session = await res.json();
+                await loadSessions();
+                document.getElementById('sessionSelect').value = session.id;
+                state.sessionId = session.id;
+                document.getElementById('messages').innerHTML = '';
+                addMessage('assistant', `✅ "${title}" erstellt!`);
+                enableChat();
+                showToast('Auftrag erstellt');
+            } catch (e) { showToast('Fehler', 'error'); }
+        }
+
+        // Inline Confirm (Option A)
+        let _pendingHeaderAction = null;
+
+        function inlineConfirmOpen(action) {
+            const bar = document.getElementById('inlineConfirm');
+            const text = document.getElementById('inlineConfirmText');
+            const ok = document.getElementById('inlineConfirmOk');
+            if (!bar || !text || !ok) return;
+
+            _pendingHeaderAction = action;
+            if (action === 'delete-session') {
+                text.textContent = 'Auftrag wirklich löschen?';
+                ok.textContent = 'Auftrag löschen';
+            } else if (action === 'clear-chat') {
+                text.textContent = state.sessionId ? 'Chat wirklich leeren?' : 'Allgemeinen Chat leeren?';
+                ok.textContent = 'Leeren';
+            } else {
+                text.textContent = 'Wirklich ausführen?';
+                ok.textContent = 'OK';
+            }
+
+            bar.classList.add('active');
+        }
+
+        function inlineConfirmCancel() {
+            const bar = document.getElementById('inlineConfirm');
+            if (bar) bar.classList.remove('active');
+            _pendingHeaderAction = null;
+        }
+
+        async function inlineConfirmOk() {
+            const action = _pendingHeaderAction;
+            inlineConfirmCancel();
+            if (!action) return;
+
+            if (action === 'delete-session') {
+                if (!state.sessionId) return;
+                try {
+                    const res = await fetch(`${API}/chat/sessions/${state.sessionId}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error();
+                    await loadSessions();
+                    showToast('Auftrag gelöscht', 'success');
+                } catch (e) {
+                    showToast('Fehler', 'error');
+                }
+                return;
+            }
+
+            if (action === 'clear-chat') {
+                try {
+                    if (state.sessionId) {
+                        const res = await fetch(`${API}/chat/sessions/${state.sessionId}/messages`, { method: 'DELETE' });
+                        if (!res.ok) throw new Error();
+                    } else {
+                        const res = await fetch(`${API}/general/messages`, { method: 'DELETE' });
+                        if (!res.ok) throw new Error();
+                    }
+                    await loadMessages();
+                    showToast('Chat geleert', 'success');
+                } catch (e) {
+                    showToast('Fehler beim Leeren', 'error');
+                }
+            }
+        }
+
+        async function deleteCurrentSession() {
+            if (!state.sessionId) return;
+            inlineConfirmOpen('delete-session');
+        }
+
+        function enableChat() {
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('deleteBtn').disabled = false;
+            document.getElementById('quickActions').classList.add('active');
+            document.getElementById('messageInput').focus();
+        }
+
+        // Schnellaktionen
+        function quickAction(type) {
+            const actions = {
+                'preise': 'Zeige mir alle verfügbaren Services mit Preisen',
+                'angebot': 'Erstelle ein Angebot für folgende Leistungen:',
+                'rechnung': 'Erstelle eine Rechnung für die erledigten Arbeiten:',
+                'abschlag': 'Erstelle eine Abschlagsrechnung (30%) für das ausgewählte Angebot',
+                'status': 'Zeige mir alle offenen Rechnungen und deren Status',
+                'analyse': 'Analysiere das ausgewählte Dokument und zeige mir die Details'
+            };
+            
+            const text = actions[type] || '';
+            const input = document.getElementById('messageInput');
+            
+            // Bei bestimmten Aktionen direkt senden
+            if (['preise', 'status'].includes(type)) {
+                input.value = text;
+                sendMessage();
+            } 
+            // Bei Abschlag/Analyse prüfen ob Dokument ausgewählt
+            else if (['abschlag', 'analyse'].includes(type)) {
+                if (!state.selectedDoc) {
+                    showToast('Bitte zuerst ein Dokument auswählen', 'error');
+                    return;
+                }
+                input.value = text;
+                sendMessage();
+            }
+            // Bei anderen: Text einfügen, Cursor ans Ende
+            else {
+                input.value = text + ' ';
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+            }
+        }
+
+        // Chat Aktionen
+        async function refreshChat() {
+            if (state.sessionId) {
+                showToast('Chat wird aktualisiert...', 'success');
+                await loadMessages();
+            } else {
+                showToast('Kein Auftrag ausgewählt', 'error');
+            }
+        }
+        
+        async function clearChat() {
+            inlineConfirmOpen('clear-chat');
+        }
+
+        // Messages
+        async function loadMessages() {
+            try {
+                const div = document.getElementById('messages');
+                div.innerHTML = '';
+
+                if (!state.sessionId) {
+                    // General chat - load from general messages store
+                    const res = await fetch(`${API}/general/messages`);
+                    if (!res.ok) {
+                        div.innerHTML = `\n                        <div class="empty-state">\n                            <span class="icon">🤖</span>\n                            <p><strong>Allgemeiner Chat</strong></p>\n                            <p style="font-size: 0.8rem; color: var(--muted);">Frag mich alles über Elektro!</p>\n                        </div>\n                    `;
+                        return;
+                    }
+                    const messages = await res.json();
+                    if (!messages || messages.length === 0) {
+                        div.innerHTML = '<div class="empty-state"><span class="icon">🤖</span><p><strong>Allgemeiner Chat</strong></p><p style="font-size: 0.8rem; color: var(--muted);">Frag mich alles über Elektro!</p></div>';
+                    } else {
+                        messages.forEach(m => addMessage(m.role, m.content, m.id));
+                    }
+                    return;
+                }
+
+                const res = await fetch(`${API}/chat/sessions/${state.sessionId}/messages`);
+                const messages = await res.json();
+
+                if (messages.length === 0) {
+                    div.innerHTML = '<div class="empty-state"><span class="icon">💬</span><p>Starte die Konversation</p></div>';
+                } else {
+                    messages.forEach(m => addMessage(m.role, m.content, m.id));
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function addMessage(role, content, messageId = null) {
+            const div = document.getElementById('messages');
+            const empty = div.querySelector('.empty-state');
+            if (empty) empty.remove();
+            
+            const msg = document.createElement('div');
+            msg.className = 'message ' + role;
+            if (messageId) msg.dataset.messageId = messageId;
+            
+            // Aktions-Buttons
+            const actionsHtml = `
+                <div class="message-actions">
+                    ${role === 'user' ? `<button class="msg-action-btn edit" onclick="editMessage(this)" title="Bearbeiten">✏️</button>` : ''}
+                    ${role === 'user' ? `<button class="msg-action-btn resend" onclick="resendMessage(this)" title="Nochmal senden">🔄</button>` : ''}
+                    <button class="msg-action-btn copy" onclick="copyMessage(this)" title="Kopieren">📋</button>
+                    <button class="msg-action-btn delete" onclick="deleteMessage(this)" title="Löschen">🗑️</button>
+                </div>
+            `;
+            
+            let contentHtml = content;
+            if (role === 'assistant') {
+                contentHtml = content
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+                    .replace(/\n/g, '<br>');
+            }
+            
+            msg.innerHTML = actionsHtml + `<div class="message-content">${role === 'assistant' ? contentHtml : ''}</div>`;
+            if (role === 'user') {
+                msg.querySelector('.message-content').textContent = content;
+            }
+            msg.dataset.originalContent = content;
+            
+            div.appendChild(msg);
+            div.scrollTop = div.scrollHeight;
+            
+            return msg;
+        }
+        
+        // Nachricht-Aktionen
+        async function deleteMessage(btn) {
+            const msg = btn.closest('.message');
+            const messageId = msg.dataset.messageId;
+            if (!messageId) {
+                showToast('Nachricht-ID fehlt!', 'error');
+                return;
+            }
+
+            // Two-step confirmation: first click arms the button, second click within 5s confirms
+            if (btn.dataset.confirmPending !== '1') {
+                btn.dataset.confirmPending = '1';
+                btn._originalHTML = btn.innerHTML;
+                btn.innerHTML = '⚠️ Nochmal klicken';
+                btn.classList.add('confirm');
+                // Visual cue on the message
+                msg.classList.add('confirm-delete');
+                // Set timeout to clear pending state
+                msg._deleteTimer = setTimeout(() => {
+                    btn.dataset.confirmPending = '0';
+                    btn.innerHTML = btn._originalHTML || '🗑️';
+                    btn.classList.remove('confirm');
+                    msg.classList.remove('confirm-delete');
+                    delete msg._deleteTimer;
+                }, 5000);
+                return;
+            }
+
+            // Confirmed: clear timer and proceed with deletion
+            if (msg._deleteTimer) {
+                clearTimeout(msg._deleteTimer);
+                delete msg._deleteTimer;
+            }
+            btn.dataset.confirmPending = '0';
+            btn.innerHTML = btn._originalHTML || '🗑️';
+            btn.classList.remove('confirm');
+            msg.classList.remove('confirm-delete');
+
+            let url = '';
+            if (state.sessionId) {
+                url = `${API}/chat/messages/${messageId}`;
+            } else {
+                url = `${API}/general/messages/${messageId}`;
+            }
+            try {
+                const res = await fetch(url, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Fehler beim Löschen');
+                msg.style.animation = 'fadeOut 0.2s ease';
+                setTimeout(() => msg.remove(), 200);
+                showToast('Nachricht gelöscht', 'success');
+            } catch (e) {
+                showToast('Löschen fehlgeschlagen', 'error');
+            }
+        }
+        
+        function copyMessage(btn) {
+            const msg = btn.closest('.message');
+            const content = msg.dataset.originalContent || msg.querySelector('.message-content').textContent;
+            navigator.clipboard.writeText(content);
+            showToast('Kopiert!', 'success');
+        }
+        
+        function editMessage(btn) {
+            const msg = btn.closest('.message');
+            const content = msg.dataset.originalContent || msg.querySelector('.message-content').textContent;
+            
+            msg.classList.add('editing');
+            msg.querySelector('.message-content').innerHTML = `
+                <textarea class="edit-textarea">${content}</textarea>
+                <div class="edit-buttons">
+                    <button class="cancel-btn" onclick="cancelEdit(this)">Abbrechen</button>
+                    <button class="save-btn" onclick="saveEdit(this)">Speichern & Senden</button>
+                </div>
+            `;
+            msg.querySelector('.edit-textarea').focus();
+        }
+        
+        function cancelEdit(btn) {
+            const msg = btn.closest('.message');
+            const content = msg.dataset.originalContent;
+            msg.classList.remove('editing');
+            msg.querySelector('.message-content').textContent = content;
+        }
+        
+        function saveEdit(btn) {
+            const msg = btn.closest('.message');
+            const newContent = msg.querySelector('.edit-textarea').value.trim();
+            if (!newContent) return;
+            
+            msg.classList.remove('editing');
+            msg.querySelector('.message-content').textContent = newContent;
+            msg.dataset.originalContent = newContent;
+            
+            // Nachfolgende Nachrichten entfernen und neu senden
+            while (msg.nextElementSibling) {
+                msg.nextElementSibling.remove();
+            }
+            
+            // Neu senden
+            document.getElementById('messageInput').value = newContent;
+            msg.remove();
+            sendMessage();
+        }
+        
+        function resendMessage(btn) {
+            const msg = btn.closest('.message');
+            const content = msg.dataset.originalContent || msg.querySelector('.message-content').textContent;
+            
+            // Nachfolgende Nachrichten entfernen
+            while (msg.nextElementSibling) {
+                msg.nextElementSibling.remove();
+            }
+            
+            // Neu senden
+            document.getElementById('messageInput').value = content;
+            msg.remove();
+            sendMessage();
+        }
+
+        // File Upload Handling
+        let uploadedFile = null;
+        
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                'pdf': '📕',
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️',
+                'txt': '📝',
+                'csv': '📊', 'xlsx': '📊', 'xls': '📊',
+                'doc': '📄', 'docx': '📄'
+            };
+            return icons[ext] || '📎';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            uploadedFile = file;
+            
+            // Goldene Anzeige aktivieren
+            document.getElementById('uploadBtn').classList.add('has-file');
+            document.getElementById('fileIcon').textContent = getFileIcon(file.name);
+            document.getElementById('uploadFilename').textContent = file.name;
+            document.getElementById('uploadFileSize').textContent = formatFileSize(file.size);
+            document.getElementById('uploadPreview').classList.add('active');
+            
+            // Toast entfernt - überflüssige Meldung
+        }
+        
+        function clearUpload() {
+            uploadedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('uploadBtn').classList.remove('has-file');
+            document.getElementById('uploadPreview').classList.remove('active');
+        }
+        
+        function addFileMessage(filename, filesize) {
+            const div = document.getElementById('messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message user file-message';
+            msgDiv.innerHTML = `
+                <div class="file-badge">
+                    ${getFileIcon(filename)} <strong>${filename}</strong> (${formatFileSize(filesize)})
+                </div>
+                <span>Datei zur Analyse hochgeladen</span>
+            `;
+            div.appendChild(msgDiv);
+            div.scrollTop = div.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            let text = input.value.trim();
+            
+            // Entweder Text oder Datei muss vorhanden sein
+            if (!text && !uploadedFile) return;
+            
+            // Kontext hinzufügen wenn Dokument ausgewählt
+            if (state.selectedDoc) {
+                const d = state.selectedDoc;
+                const type = state.docType === 'quotations' ? 'Angebot' : 'Rechnung';
+                text = `[${type}: ${d.voucherNumber}, ID: ${d.id}, ${d.totalAmount}€, ${d.voucherStatus}]\n\n${text}`;
+            }
+            
+            // Anzeige der User-Nachricht
+            let userElem = null;
+            if (uploadedFile) {
+                addFileMessage(uploadedFile.name, uploadedFile.size);
+                if (text) {
+                    userElem = addMessage('user', input.value.trim());
+                    if (!state.sessionId) {
+                        try {
+                            const saveRes = await fetch(`${API}/general/messages`, {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ role: 'user', content: input.value.trim() })
+                            });
+                            if (saveRes.ok) {
+                                const saved = await saveRes.json();
+                                userElem.dataset.messageId = saved.id;
+                            }
+                        } catch(e) { console.error('Save general user message failed', e); }
+                    }
+                }
+            } else {
+                userElem = addMessage('user', input.value.trim());
+                if (!state.sessionId && userElem) {
+                    try {
+                        const saveRes = await fetch(`${API}/general/messages`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ role: 'user', content: input.value.trim() })
+                        });
+                        if (saveRes.ok) {
+                            const saved = await saveRes.json();
+                            userElem.dataset.messageId = saved.id;
+                        }
+                    } catch(e) { console.error('Save general user message failed', e); }
+                }
+            }
+            input.value = '';
+            
+            // Empty state entfernen
+            const emptyState = document.querySelector('#messages .empty-state');
+            if (emptyState) emptyState.remove();
+            
+            document.getElementById('typing').classList.add('active');
+            document.getElementById('sendBtn').disabled = true;
+            
+            try {
+                let response;
+                
+                // KUNDEN-CHAT MODUS (Kunde ausgewählt, aber keine Session)
+                if (state.customerId && !state.sessionId) {
+                    // Chat über Kunden - sende Kundendaten mit an general chat
+                    const customerContext = {
+                        customer_id: state.customerId,
+                        customer_name: state.customer.name,
+                        customer_email: state.customer.email,
+                        customer_type: state.customer.customer_type,
+                        vat_id: state.customer.vat_id,
+                        tax_number: state.customer.tax_number
+                    };
+                    
+                    if (uploadedFile) {
+                        // Datei im Kunden-Modus
+                        const formData = new FormData();
+                        formData.append('file', uploadedFile);
+                        
+                        const res = await fetch(`${API}/general/upload`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        if (!res.ok) throw new Error();
+                        response = await res.json();
+                        
+                        // Save document to customer history
+                        await saveDocumentToCustomer(
+                            uploadedFile.name,
+                            response.content || response.message,
+                            { vat_id: response.extracted_vat_id, tax_number: response.extracted_tax_number }
+                        );
+                        
+                        // Save to chat history for multi-turn
+                        await saveToCustomerChatHistory('user', `[Datei hochgeladen: ${uploadedFile.name}]`);
+                        await saveToCustomerChatHistory('assistant', response.content || response.message);
+                        
+                        const assistantElem = addMessage('assistant', response.content || response.message);
+                        if (assistantElem) {
+                            try {
+                                const saveRes = await fetch(`${API}/general/messages`, {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ role: 'assistant', content: response.content || response.message })
+                                });
+                                if (saveRes.ok) {
+                                    const saved = await saveRes.json();
+                                    assistantElem.dataset.messageId = saved.id;
+                                }
+                            } catch(e) { console.error('Save general assistant message failed', e); }
+                        }
+                        
+                        if (text) {
+                            const textRes = await fetch(`${API}/general/chat`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    content: text, 
+                                    feature: 'pdf',
+                                    context: customerContext 
+                                })
+                            });
+                            if (textRes.ok) {
+                                const textResponse = await textRes.json();
+                                const assistantElem2 = addMessage('assistant', textResponse.content);
+                                if (assistantElem2) {
+                                    try {
+                                        const saveRes = await fetch(`${API}/general/messages`, {
+                                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ role: 'assistant', content: textResponse.content })
+                                        });
+                                        if (saveRes.ok) {
+                                            const saved = await saveRes.json();
+                                            assistantElem2.dataset.messageId = saved.id;
+                                        }
+                                    } catch(e) { console.error('Save general assistant message failed', e); }
+                                }
+                            }
+                        }
+                        clearUpload();
+                    } else {
+                        // Nur Text im Kunden-Chat
+                        // Save user message to chat history
+                        await saveToCustomerChatHistory('user', input.value.trim() || text);
+                        
+                        const res = await fetch(`${API}/general/chat`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                content: text, 
+                                feature: 'general',
+                                context: customerContext,
+                                conversation_history: getConversationContext() // Multi-turn support
+                            })
+                        });
+                        
+                        if (!res.ok) throw new Error();
+                        response = await res.json();
+                        
+                        // Save assistant response to chat history
+                        await saveToCustomerChatHistory('assistant', response.content);
+                        
+                        const assistantElem3 = addMessage('assistant', response.content);
+                        if (assistantElem3) {
+                            try {
+                                const saveRes = await fetch(`${API}/general/messages`, {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ role: 'assistant', content: response.content })
+                                });
+                                if (saveRes.ok) {
+                                    const saved = await saveRes.json();
+                                    assistantElem3.dataset.messageId = saved.id;
+                                }
+                            } catch(e) { console.error('Save general assistant message failed', e); }
+                        }
+                    }
+                }
+                // ALLGEMEINER CHAT MODUS (kein Kunde/Session ausgewählt)
+                else if (!state.sessionId) {
+                    if (uploadedFile) {
+                        // Datei im allgemeinen Modus - an /general/upload senden
+                        const formData = new FormData();
+                        formData.append('file', uploadedFile);
+                        
+                        const res = await fetch(`${API}/general/upload`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        if (!res.ok) throw new Error();
+                        response = await res.json();
+                        
+                        // Store extracted data for potential customer matching
+                        state.lastExtractedText = response.content || '';
+                        state.lastExtractedData = {
+                            vat_id: response.extracted_vat_id,
+                            tax_number: response.extracted_tax_number
+                        };
+                        
+                        // Try to match to existing customers (if no customer selected)
+                        if (!state.customerId && state.lastExtractedText) {
+                            showCustomerMatchSuggestion(state.lastExtractedText, state.lastExtractedData);
+                        }
+                        
+                        const assistantElem = addMessage('assistant', response.content || response.message);
+                        if (!state.sessionId && assistantElem) {
+                            try {
+                                const saveRes = await fetch(`${API}/general/messages`, {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ role: 'assistant', content: response.content || response.message })
+                                });
+                                if (saveRes.ok) {
+                                    const saved = await saveRes.json();
+                                    assistantElem.dataset.messageId = saved.id;
+                                }
+                            } catch(e) { console.error('Save general assistant message failed', e); }
+                        }
+                        
+                        // Wenn Text dabei, auch senden
+                        if (text) {
+                            const textRes = await fetch(`${API}/general/chat`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ content: text, feature: 'pdf' })
+                            });
+                            if (textRes.ok) {
+                                const textResponse = await textRes.json();
+                                const assistantElem2 = addMessage('assistant', textResponse.content);
+                                if (!state.sessionId && assistantElem2) {
+                                    try {
+                                        const saveRes = await fetch(`${API}/general/messages`, {
+                                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ role: 'assistant', content: textResponse.content })
+                                        });
+                                        if (saveRes.ok) {
+                                            const saved = await saveRes.json();
+                                            assistantElem2.dataset.messageId = saved.id;
+                                        }
+                                    } catch(e) { console.error('Save general assistant message failed', e); }
+                                }
+                            }
+                        }
+                        clearUpload();
+                    } else {
+                        // Nur Text im allgemeinen Modus
+                        const res = await fetch(`${API}/general/chat`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content: text, feature: 'general' })
+                        });
+                        
+                        if (!res.ok) throw new Error();
+                        response = await res.json();
+                        const assistantElem3 = addMessage('assistant', response.content);
+                        if (!state.sessionId && assistantElem3) {
+                            try {
+                                const saveRes = await fetch(`${API}/general/messages`, {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ role: 'assistant', content: response.content })
+                                });
+                                if (saveRes.ok) {
+                                    const saved = await saveRes.json();
+                                    assistantElem3.dataset.messageId = saved.id;
+                                }
+                            } catch(e) { console.error('Save general assistant message failed', e); }
+                        }
+                    }
+                }
+                // KUNDEN-CHAT MODUS (Session ausgewählt)
+                else if (uploadedFile) {
+                    // Mit Datei: FormData verwenden
+                    const formData = new FormData();
+                    formData.append('session_id', state.sessionId);
+                    formData.append('file', uploadedFile);
+                    
+                    const res = await fetch(`${API}/chat/upload?session_id=${state.sessionId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!res.ok) throw new Error();
+                    response = await res.json();
+                    
+                    // Zusätzliche Nachricht senden wenn Text dabei
+                    if (text) {
+                        const textRes = await fetch(`${API}/chat/messages`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ session_id: state.sessionId, content: text })
+                        });
+                        if (textRes.ok) {
+                            const textResponse = await textRes.json();
+                            addMessage('assistant', textResponse.content);
+                        }
+                    } else {
+                        addMessage('assistant', response.message);
+                    }
+                    clearUpload();
+                } else {
+                    // Ohne Datei: JSON
+                    const res = await fetch(`${API}/chat/messages`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: state.sessionId, content: text })
+                    });
+                    
+                    if (!res.ok) throw new Error();
+                    response = await res.json();
+                    addMessage('assistant', response.content);
+                }
+            } catch (e) {
+                console.error('Send error:', e);
+                addMessage('assistant', '❌ Fehler: Server nicht erreichbar');
+            }
+            
+            document.getElementById('typing').classList.remove('active');
+            document.getElementById('sendBtn').disabled = false;
+            input.focus();
+        }
+
+        // Dokumente
+        function switchDocTab(type) {
+            state.docType = type;
+            state.selectedDoc = null;
+            clearContext();
+            
+            document.querySelectorAll('.doc-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.doc-tab[data-type="${type}"]`).classList.add('active');
+            
+            renderDocs();
+        }
+
+        async function loadDocs() {
+            const list = document.getElementById('docList');
+            list.innerHTML = '<div class="empty-docs">Lade...</div>';
+            
+            try {
+                // Lade beide: Angebote und Rechnungen
+                const [quotRes, invRes] = await Promise.all([
+                    fetch(`${API}/customers/${state.customerId}/quotations`),
+                    fetch(`${API}/customers/${state.customerId}/invoices`)
+                ]);
+                
+                state.quotations = await quotRes.json();
+                state.invoices = await invRes.json();
+                
+                renderDocs();
+            } catch (e) {
+                list.innerHTML = '<div class="empty-docs">Fehler beim Laden</div>';
+            }
+        }
+
+        function renderDocs() {
+            const list = document.getElementById('docList');
+            const docs = state.docType === 'quotations' ? state.quotations : state.invoices;
+            
+            if (docs.length === 0) {
+                list.innerHTML = `<div class="empty-docs">Keine ${state.docType === 'quotations' ? 'Angebote' : 'Rechnungen'}</div>`;
+                return;
+            }
+            
+            list.innerHTML = '';
+            
+            docs.forEach(d => {
+                const div = document.createElement('div');
+                div.className = 'doc-item';
+                div.dataset.id = d.id;
+                
+                const date = new Date(d.voucherDate).toLocaleDateString('de-DE');
+                const amount = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(d.totalAmount);
+                const statusMap = { accepted: 'Angenommen', open: 'Offen', draft: 'Entwurf', paid: 'Bezahlt', paidoff: 'Bezahlt', overdue: 'Überfällig' };
+                const statusClass = ['paid', 'paidoff', 'accepted'].includes(d.voucherStatus) ? 'paid' : (d.voucherStatus === 'open' ? 'open' : '');
+                
+                // Rechnungstyp-Badge (Abschlag/Normal)
+                let typeBadge = '';
+                if (state.docType === 'invoices' && d.invoiceType === 'downpayment') {
+                    typeBadge = '<span class="doc-type-badge downpayment">Abschlag</span>';
+                }
+                
+                // Angebots-Referenz bei Rechnungen
+                let relationInfo = '';
+                if (state.docType === 'invoices' && d.relatedQuotationId) {
+                    const relQuot = state.quotations.find(q => q.id === d.relatedQuotationId);
+                    if (relQuot) {
+                        relationInfo = `<div class="doc-relation">↳ zu ${relQuot.voucherNumber || 'Angebot'}</div>`;
+                    }
+                }
+                
+                div.innerHTML = `
+                    <div class="doc-header">
+                        <span class="doc-number">${d.voucherNumber || (state.docType === 'quotations' ? 'Angebot' : 'Rechnung')}${typeBadge}</span>
+                        <span class="doc-status ${statusClass}">${statusMap[d.voucherStatus] || d.voucherStatus}</span>
+                    </div>
+                    <div class="doc-meta">
+                        <span>${date}</span>
+                        <span class="doc-amount">${amount}</span>
+                    </div>
+                    ${relationInfo}
+                `;
+                
+                div.onclick = () => selectDoc(d);
+                list.appendChild(div);
+            });
+            
+            // Wenn Angebot ausgewählt, zeige zugehörige Rechnungen
+            if (state.docType === 'quotations' && state.selectedDoc) {
+                showRelatedInvoices(state.selectedDoc.id);
+            }
+        }
+
+        function selectDoc(doc) {
+            // Toggle
+            if (state.selectedDoc?.id === doc.id) {
+                clearContext();
+                return;
+            }
+            
+            state.selectedDoc = doc;
+            
+            document.querySelectorAll('.doc-item').forEach(el => {
+                el.classList.remove('selected');
+                el.classList.remove('related');
+            });
+            document.querySelector(`.doc-item[data-id="${doc.id}"]`)?.classList.add('selected');
+            
+            const type = state.docType === 'quotations' ? '📋' : '🧾';
+            const amount = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(doc.totalAmount);
+            document.getElementById('contextText').textContent = `${doc.voucherNumber} • ${amount}`;
+            document.getElementById('contextBadge').classList.add('active');
+            
+            // Bei Angebot-Auswahl: Zeige zugehörige Rechnungen
+            if (state.docType === 'quotations') {
+                showRelatedInvoices(doc.id);
+            }
+        }
+
+        function showRelatedInvoices(quotationId) {
+            // Entferne alte related-section
+            document.querySelectorAll('.related-section').forEach(el => el.remove());
+            
+            // Finde zugehörige Rechnungen
+            const relatedInvoices = state.invoices.filter(inv => inv.relatedQuotationId === quotationId);
+            
+            if (relatedInvoices.length === 0) return;
+            
+            // Berechne Summen
+            const totalInvoiced = relatedInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+            const quotation = state.quotations.find(q => q.id === quotationId);
+            const quotationTotal = quotation?.totalAmount || 0;
+            const remaining = quotationTotal - totalInvoiced;
+            
+            // Erstelle Related-Section
+            const section = document.createElement('div');
+            section.className = 'related-section active';
+            
+            let invoicesHtml = '';
+            relatedInvoices.forEach(inv => {
+                const date = new Date(inv.voucherDate).toLocaleDateString('de-DE');
+                const amount = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(inv.totalAmount);
+                const isDownpayment = inv.invoiceType === 'downpayment';
+                const statusMap = { paid: '✅', paidoff: '✅', open: '⏳', draft: '📝', overdue: '⚠️' };
+                
+                invoicesHtml += `
+                    <div class="doc-item related" data-id="${inv.id}" onclick="selectRelatedInvoice('${inv.id}')" style="margin-left: 0;">
+                        <div class="doc-header">
+                            <span class="doc-number">${inv.voucherNumber || 'Rechnung'}
+                                <span class="doc-type-badge ${isDownpayment ? 'downpayment' : ''}">${isDownpayment ? 'Abschlag' : 'Gesamt'}</span>
+                            </span>
+                            <span>${statusMap[inv.voucherStatus] || ''}</span>
+                        </div>
+                        <div class="doc-meta">
+                            <span>${date}</span>
+                            <span class="doc-amount">${amount}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            const remainingFormatted = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(remaining);
+            const totalFormatted = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(totalInvoiced);
+            const summaryColor = remaining <= 0 ? 'var(--success)' : 'var(--warning)';
+            
+            section.innerHTML = `
+                <h4>🧾 Zugehörige Rechnungen (${relatedInvoices.length})</h4>
+                <div class="related-summary">
+                    Berechnet: ${totalFormatted} | 
+                    <span style="color: ${summaryColor}">Rest: ${remainingFormatted}</span>
+                </div>
+                ${invoicesHtml}
+            `;
+            
+            // Füge nach dem ausgewählten Angebot ein
+            const selectedEl = document.querySelector(`.doc-item[data-id="${quotationId}"]`);
+            if (selectedEl) {
+                selectedEl.after(section);
+            }
+        }
+
+        function selectRelatedInvoice(invoiceId) {
+            const invoice = state.invoices.find(inv => inv.id === invoiceId);
+            if (!invoice) return;
+            
+            // Wechsle zu Rechnungen-Tab mit dieser Rechnung ausgewählt
+            state.selectedDoc = invoice;
+            state.docType = 'invoices';
+            
+            document.querySelectorAll('.doc-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('.doc-tab[data-type="invoices"]').classList.add('active');
+            
+            renderDocs();
+            
+            // Scrolle zur Rechnung
+            setTimeout(() => {
+                const el = document.querySelector(`.doc-item[data-id="${invoiceId}"]`);
+                if (el) {
+                    el.classList.add('selected');
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+            
+            // Update Context Badge
+            const amount = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(invoice.totalAmount);
+            document.getElementById('contextText').textContent = `${invoice.voucherNumber} • ${amount}`;
+            document.getElementById('contextBadge').classList.add('active');
+        }
+
+        function clearContext() {
+            state.selectedDoc = null;
+            document.querySelectorAll('.doc-item').forEach(el => {
+                el.classList.remove('selected');
+                el.classList.remove('related');
+            });
+            document.querySelectorAll('.related-section').forEach(el => el.remove());
+            document.getElementById('contextBadge').classList.remove('active');
+        }
+
+        // Sync
+        async function syncCustomers() {
+            const btn = document.getElementById('syncBtn');
+            btn.classList.add('syncing');
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(`${API}/customers/sync-lexware`, { method: 'POST' });
+                const data = await res.json();
+                showToast(`✅ ${data.created || 0} neu, ${data.updated || 0} aktualisiert`);
+                await loadCustomers();
+            } catch (e) {
+                showToast('Sync fehlgeschlagen', 'error');
+            }
+            
+            btn.classList.remove('syncing');
+            btn.disabled = false;
+        }
+
+
+        // Neuer Kunde Modal
+        function showNewCustomerModal() {
+            document.getElementById('newCustomerModal').classList.add('active');
+            document.getElementById('newName').focus();
+        }
+
+        function hideNewCustomerModal() {
+            document.getElementById('newCustomerModal').classList.remove('active');
+            document.getElementById('newName').value = '';
+            document.getElementById('newEmail').value = '';
+            document.getElementById('newPhone').value = '';
+            document.getElementById('newAddress').value = '';
+            document.getElementById('newZip').value = '';
+            document.getElementById('newCity').value = '';
+            document.getElementById('newVatId').value = '';
+            document.getElementById('newTaxNumber').value = '';
+            // Reset to Privat
+            setCustomerType('privat');
+        }
+
+        let selectedCustomerType = 'privat';
+        
+        function setCustomerType(type) {
+            selectedCustomerType = type;
+            const privatBtn = document.getElementById('typePrivat');
+            const gewerbeBtn = document.getElementById('typeGewerbe');
+            const gewerbeFields = document.getElementById('gewerbeFields');
+            
+            if (type === 'privat') {
+                privatBtn.classList.add('active');
+                gewerbeBtn.classList.remove('active');
+                gewerbeFields.style.display = 'none';
+            } else {
+                privatBtn.classList.remove('active');
+                gewerbeBtn.classList.add('active');
+                gewerbeFields.style.display = 'block';
+            }
+        }
+
+        async function createNewCustomer() {
+            const name = document.getElementById('newName').value.trim();
+            if (!name) { showToast('Name erforderlich', 'error'); return; }
+            
+            const data = {
+                name: name,
+                email: document.getElementById('newEmail').value.trim() || null,
+                phone: document.getElementById('newPhone').value.trim() || null,
+                address: document.getElementById('newAddress').value.trim() || null,
+                zip_code: document.getElementById('newZip').value.trim() || null,
+                city: document.getElementById('newCity').value.trim() || null,
+                customer_type: selectedCustomerType,
+                vat_id: document.getElementById('newVatId').value.trim() || null,
+                tax_number: document.getElementById('newTaxNumber').value.trim() || null
+            };
+            
+            try {
+                const res = await fetch(`${API}/customers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!res.ok) throw new Error();
+                
+                hideNewCustomerModal();
+                showToast(`✅ "${name}" angelegt`);
+                await loadCustomers();
+                
+                // Neuen Kunden auswählen
+                const customers = await (await fetch(`${API}/customers`)).json();
+                const newCustomer = customers.find(c => c.name === name);
+                if (newCustomer) {
+                    document.getElementById('customerSelect').value = newCustomer.id;
+                    document.getElementById('customerSelect').dispatchEvent(new Event('change'));
+                }
+            } catch (e) {
+                showToast('Fehler beim Anlegen', 'error');
+            }
+        }
+
+        // Toast
+        function showToast(text, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastText').textContent = text;
+            document.getElementById('toastIcon').textContent = type === 'error' ? '❌' : '✅';
+            toast.className = 'toast active ' + type;
+            
+            setTimeout(() => toast.classList.remove('active'), 3000);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') hideNewCustomerModal();
+        });
+
+        // =====================================
+        // NEW FEATURES: Customer Matching, Chat History, Document History
+        // =====================================
+        
+        // Try to match extracted text to existing customers
+        async function matchCustomerFromText(extractedText, extractedData = {}) {
+            try {
+                const res = await fetch(`${API}/general/match-customer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: extractedText,
+                        extracted_company: extractedData.company || ''
+                    })
+                });
+                
+                if (!res.ok) return [];
+                const data = await res.json();
+                return data.matches || [];
+            } catch (e) {
+                console.error('Customer matching failed:', e);
+                return [];
+            }
+        }
+        
+        // Show customer match suggestions after PDF upload
+        async function showCustomerMatchSuggestion(extractedText, extractedData = {}) {
+            const matches = await matchCustomerFromText(extractedText, extractedData);
+            
+            if (matches.length === 0) return;
+            
+            const container = document.getElementById('customerMatchSuggestion');
+            const list = document.getElementById('customerMatchList');
+            
+            list.innerHTML = '';
+            matches.forEach(match => {
+                const scoreClass = match.score >= 0.7 ? '' : (match.score >= 0.4 ? 'medium' : 'low');
+                const scorePercent = Math.round(match.score * 100);
+                const matchedOn = match.matched_on.join(', ');
+                
+                list.innerHTML += `
+                    <div class="match-item" onclick="selectMatchedCustomer(${match.customer_id})">
+                        <div class="match-info">
+                            <div class="match-name">${match.name}</div>
+                            <div class="match-details">${match.email || 'Keine E-Mail'} • Erkannt: ${matchedOn}</div>
+                        </div>
+                        <span class="match-score ${scoreClass}">${scorePercent}%</span>
+                    </div>
+                `;
+            });
+            
+            container.classList.add('active');
+        }
+        
+        // Select a matched customer
+        function selectMatchedCustomer(customerId) {
+            document.getElementById('customerSelect').value = customerId;
+            document.getElementById('customerSelect').dispatchEvent(new Event('change'));
+            dismissCustomerMatch();
+            showToast('✅ Kunde zugeordnet', 'success');
+        }
+        
+        // Dismiss customer match suggestion
+        function dismissCustomerMatch() {
+            document.getElementById('customerMatchSuggestion').classList.remove('active');
+        }
+        
+        // Load chat history for current customer
+        async function loadCustomerChatHistory() {
+            if (!state.customerId) return;
+            
+            try {
+                const res = await fetch(`${API}/general/customer/${state.customerId}/chat-history`);
+                if (!res.ok) return;
+                
+                state.chatHistory = await res.json();
+                
+                // Display history in chat
+                if (state.chatHistory.length > 0) {
+                    const messagesDiv = document.getElementById('messages');
+                    messagesDiv.innerHTML = ''; // Clear empty state
+                    
+                    state.chatHistory.forEach(msg => {
+                        addMessage(msg.role, msg.content);
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load chat history:', e);
+            }
+        }
+        
+        // Save message to customer chat history
+        async function saveToCustomerChatHistory(role, content) {
+            if (!state.customerId) return;
+            
+            try {
+                await fetch(`${API}/general/customer/${state.customerId}/chat-history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role, content })
+                });
+                
+                // Also add to local history for multi-turn context
+                state.chatHistory.push({ role, content, timestamp: new Date().toISOString() });
+            } catch (e) {
+                console.error('Failed to save to chat history:', e);
+            }
+        }
+        
+        // Load uploaded documents for current customer
+        async function loadCustomerDocuments() {
+            if (!state.customerId) {
+                document.getElementById('docHistorySection').style.display = 'none';
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API}/general/customer/${state.customerId}/documents`);
+                if (!res.ok) return;
+                
+                const docs = await res.json();
+                state.uploadedDocuments = docs;
+                
+                updateDocumentHistoryUI();
+            } catch (e) {
+                console.error('Failed to load customer documents:', e);
+            }
+        }
+        
+        // Update document history sidebar
+        function updateDocumentHistoryUI() {
+            const section = document.getElementById('docHistorySection');
+            const list = document.getElementById('docHistoryList');
+            const count = document.getElementById('docHistoryCount');
+            
+            if (state.uploadedDocuments.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            section.style.display = 'block';
+            count.textContent = state.uploadedDocuments.length;
+            
+            list.innerHTML = '';
+            state.uploadedDocuments.slice().reverse().forEach(doc => {
+                const date = new Date(doc.uploaded_at);
+                const timeStr = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                const dateStr = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                
+                const hasExtracted = doc.extracted_data && 
+                    (doc.extracted_data.vat_id || doc.extracted_data.tax_number);
+                
+                list.innerHTML += `
+                    <div class="uploaded-doc-item" onclick="showDocumentSummary(${doc.id})">
+                        <span class="doc-icon">${getFileIcon(doc.filename)}</span>
+                        <div class="doc-info">
+                            <div class="doc-name">${doc.filename}</div>
+                            <div class="doc-time">${dateStr} ${timeStr}</div>
+                        </div>
+                        ${hasExtracted ? '<span class="doc-extracted">✓ IDs</span>' : ''}
+                    </div>
+                `;
+            });
+        }
+        
+        // Show document summary in chat
+        function showDocumentSummary(docId) {
+            const doc = state.uploadedDocuments.find(d => d.id === docId);
+            if (!doc) return;
+            
+            let summaryText = `📄 **${doc.filename}**\n\n${doc.summary || 'Keine Zusammenfassung verfügbar.'}`;
+            
+            if (doc.extracted_data) {
+                if (doc.extracted_data.vat_id) {
+                    summaryText += `\n\n✅ USt-IdNr.: ${doc.extracted_data.vat_id}`;
+                }
+                if (doc.extracted_data.tax_number) {
+                    summaryText += `\n✅ Steuernummer: ${doc.extracted_data.tax_number}`;
+                }
+            }
+            
+            addMessage('assistant', summaryText);
+        }
+        
+        // Save document to customer's history
+        async function saveDocumentToCustomer(filename, summary, extractedData = {}) {
+            if (!state.customerId) return;
+            
+            try {
+                const res = await fetch(`${API}/general/customer/${state.customerId}/documents`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename,
+                        summary,
+                        extracted_data: extractedData
+                    })
+                });
+                
+                if (res.ok) {
+                    const doc = await res.json();
+                    state.uploadedDocuments.push(doc);
+                    updateDocumentHistoryUI();
+                }
+            } catch (e) {
+                console.error('Failed to save document:', e);
+            }
+        }
+        
+        // Get conversation context for AI (multi-turn)
+        function getConversationContext() {
+            // Get last 10 messages for context
+            const recentHistory = state.chatHistory.slice(-10);
+            return recentHistory.map(msg => ({
+                role: msg.role,
+                content: msg.content
+            }));
+        }
+        
+        // Enhanced quickAction with new options
+        function quickAction(type) {
+            const actions = {
+                'preise': 'Was kosten typische Elektroinstallationen?',
+                'angebot': 'Erstelle ein Angebot für diesen Kunden',
+                'rechnung': 'Erstelle eine Rechnung basierend auf dem Angebot',
+                'abschlag': 'Erstelle eine Abschlagsrechnung',
+                'status': 'Zeige mir alle offenen Posten',
+                'analyse': 'Analysiere die hochgeladene Datei',
+                'steuer': 'Extrahiere Steuer-IDs aus dem hochgeladenen Dokument',
+                'hilfe': 'Was kannst du alles für mich tun?'
+            };
+            
+            const message = actions[type] || '';
+            if (message) {
+                document.getElementById('messageInput').value = message;
+                sendMessage();
+            }
+        }
+
+        // PWA: register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+            });
+        }
+    </script>
+</body>
+</html>

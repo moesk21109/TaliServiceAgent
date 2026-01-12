@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tali Service Agent - Dashboard</title>
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #141b3d;
+            --bg-card: #1a2347;
+            --accent-primary: #00d4ff;
+            --accent-secondary: #7B68EE;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --border-color: #2d3748;
+            --success: #48bb78;
+            --warning: #ed8936;
+            --danger: #f56565;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(123, 104, 238, 0.1) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .status-bar {
+            background: var(--bg-secondary);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-primary);
+            box-shadow: 0 8px 24px rgba(0, 212, 255, 0.2);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+        }
+
+        .quick-actions {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .quick-actions h2 {
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .action-btn {
+            background: var(--bg-card);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .action-btn:hover {
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        /* Floating Chat Button */
+        .floating-chat {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 212, 255, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .floating-chat:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 24px rgba(0, 212, 255, 0.6);
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ Tali Service Agent</h1>
+            <p>Intelligente Elektro-Service-Verwaltung</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-dot"></span>
+                <span id="serverStatus">Server Online</span>
+            </div>
+            <div class="status-item">
+                <span>👥</span>
+                <span id="customerCount">0 Kunden</span>
+            </div>
+            <button class="btn btn-secondary" onclick="syncCustomers()">
+                🔄 Synchronisieren
+            </button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCustomers">0</div>
+                <div class="stat-label">Kunden</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalSessions">0</div>
+                <div class="stat-label">Aufträge</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalProducts">0</div>
+                <div class="stat-label">Produkte</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">✓</div>
+                <div class="stat-label">Lexoffice</div>
+            </div>
+        </div>
+
+        <div class="cards">
+            <div class="card" onclick="window.location.href='live.html'">
+                <span class="card-icon">💬</span>
+                <h3>Kunden-Chat</h3>
+                <p>Intelligenter Chat mit AI-Unterstützung für Kundenanfragen und Aufträge</p>
+            </div>
+
+            <div class="card" onclick="window.location.href='general-chat.html'">
+                <span class="card-icon">🤖</span>
+                <h3>Allgemein-Chat</h3>
+                <p>Allgemeine Fragen, PDF-Analyse, Bauplan-Auswertung, Material-Listen</p>
+            </div>
+
+            <div class="card" onclick="window.location.href='new-customer.html'">
+                <span class="card-icon">➕</span>
+                <h3>Neuer Kunde</h3>
+                <p>Neuen Kunden mit Geschäfts-/Privatkundendaten erfassen</p>
+            </div>
+
+            <div class="card" onclick="window.location.href='sync.html'">
+                <span class="card-icon">🔄</span>
+                <h3>Synchronisieren</h3>
+                <p>Kunden und Produkte mit Lexoffice abgleichen</p>
+            </div>
+
+            <div class="card" onclick="window.location.href='documents.html'">
+                <span class="card-icon">📄</span>
+                <h3>Dokumente</h3>
+                <p>PDF-Upload und Analyse, Baupläne auswerten</p>
+            </div>
+
+            <div class="card" onclick="window.location.href='material-lists.html'">
+                <span class="card-icon">📋</span>
+                <h3>Material-Listen</h3>
+                <p>Automatisch generierte Listen aus Projekten</p>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <h2>⚡ Schnellaktionen</h2>
+            <div class="action-grid">
+                <div class="action-btn" onclick="quickSync()">
+                    <div style="font-size: 1.5rem;">🔄</div>
+                    <div>Sync Jetzt</div>
+                </div>
+                <div class="action-btn" onclick="window.location.href='live.html'">
+                    <div style="font-size: 1.5rem;">💬</div>
+                    <div>Neuer Chat</div>
+                </div>
+                <div class="action-btn" onclick="window.location.href='new-customer.html'">
+                    <div style="font-size: 1.5rem;">👤</div>
+                    <div>Kunde Anlegen</div>
+                </div>
+                <div class="action-btn" onclick="showStats()">
+                    <div style="font-size: 1.5rem;">📊</div>
+                    <div>Statistiken</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Allgemein-Chat Button -->
+    <div class="floating-chat" onclick="window.location.href='general-chat.html'" title="Allgemein-Chat">
+        🤖
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+
+        async function loadStats() {
+            try {
+                const [customers, products] = await Promise.all([
+                    fetch(`${API_URL}/customers`).then(r => r.json()),
+                    fetch(`${API_URL}/lexware/products`).then(r => r.json())
+                ]);
+
+                document.getElementById('totalCustomers').textContent = customers.length;
+                document.getElementById('customerCount').textContent = `${customers.length} Kunden`;
+                document.getElementById('totalProducts').textContent = products.length;
+                document.getElementById('serverStatus').textContent = '✅ Server Online';
+
+                // Load total sessions
+                let totalSessions = 0;
+                for (const customer of customers) {
+                    const sessions = await fetch(`${API_URL}/chat/customer/${customer.id}/sessions`).then(r => r.json());
+                    totalSessions += sessions.length;
+                }
+                document.getElementById('totalSessions').textContent = totalSessions;
+
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                document.getElementById('serverStatus').textContent = '❌ Server Offline';
+            }
+        }
+
+        async function syncCustomers() {
+            try {
+                document.getElementById('serverStatus').textContent = '⏳ Synchronisiere...';
+                await fetch(`${API_URL}/lexware/sync`, { method: 'POST' });
+                await loadStats();
+                alert('✅ Synchronisierung erfolgreich!');
+            } catch (error) {
+                alert('❌ Fehler bei Synchronisierung: ' + error.message);
+            }
+        }
+
+        async function quickSync() {
+            if (confirm('Kunden und Produkte mit Lexoffice synchronisieren?')) {
+                await syncCustomers();
+            }
+        }
+
+        function showStats() {
+            alert('Detaillierte Statistiken werden in einem zukünftigen Update verfügbar sein.');
+        }
+
+        // Load stats on page load
+        document.addEventListener('DOMContentLoaded', loadStats);
+    </script>
+</body>
+</html>

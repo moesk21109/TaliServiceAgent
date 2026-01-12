@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tali Demo - Funktioniert garantiert!</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+        .status {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        .content {
+            padding: 32px;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 16px;
+            font-size: 1.3rem;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        select, input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .customer-info {
+            background: #f3f4f6;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .customer-info.show {
+            display: block;
+        }
+        .chat-area {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+        .message {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .message.user {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            margin-left: auto;
+        }
+        .message.assistant {
+            background: white;
+            border: 1px solid #e5e7eb;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Tali Service Agent</h1>
+            <div class="status">✅ Server läuft</div>
+        </div>
+        
+        <div class="content">
+            <!-- SCHRITT 1: Kunde auswählen -->
+            <div class="section">
+                <h2>1️⃣ Kunde auswählen</h2>
+                <div class="form-group">
+                    <label for="customer">Wähle einen Kunden:</label>
+                    <select id="customer">
+                        <option value="">-- Bitte wählen --</option>
+                        <option value="1">Musterfirma GmbH</option>
+                        <option value="2">Max Mustermann</option>
+                        <option value="6">Müller Bau GmbH</option>
+                        <option value="7">Nadi's Immobilien</option>
+                        <option value="8">Nordtech Elektrotechnik</option>
+                        <option value="9">TestGmbH</option>
+                    </select>
+                </div>
+                
+                <div class="customer-info" id="customerInfo">
+                    <strong>Ausgewählt:</strong> <span id="customerName"></span><br>
+                    <small>Chat ist jetzt aktiv! Schreibe eine Nachricht unten.</small>
+                </div>
+            </div>
+            
+            <!-- SCHRITT 2: Chatten -->
+            <div class="section">
+                <h2>2️⃣ Mit dem Kunden chatten</h2>
+                
+                <div class="chat-area" id="chatArea">
+                    <div class="loading">👋 Wähle einen Kunden um zu starten</div>
+                </div>
+                
+                <div class="form-group">
+                    <textarea id="message" placeholder="Schreibe deine Nachricht... (z.B. 'Welche Produkte haben wir?')" disabled></textarea>
+                </div>
+                
+                <button id="sendBtn" disabled onclick="sendMessage()">
+                    💬 Nachricht senden
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+        let currentCustomerId = null;
+        let currentSessionId = null;
+        
+        const CUSTOMERS = {
+            "1": { id: 1, name: "Musterfirma GmbH", email: "info@musterfirma.de" },
+            "2": { id: 2, name: "Max Mustermann", email: "max@mustermann.de" },
+            "6": { id: 6, name: "Müller Bau GmbH", email: "rechnung@tali-service24.de" },
+            "7": { id: 7, name: "Nadi's Immobilien", email: "mehdikhan@hotmail.de" },
+            "8": { id: 8, name: "Nordtech Elektrotechnik GmbH", email: "buchhaltung@nordtech-elektro.de" },
+            "9": { id: 9, name: "TestGmbH", email: "info@testgmbh.de" }
+        };
+        
+        // Lade echte Kunden aus der Datenbank
+        async function loadCustomersFromAPI() {
+            console.log("[API] Lade Kunden aus Datenbank...");
+            
+            try {
+                const response = await fetch(`${API_URL}/customers`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const customers = await response.json();
+                console.log(`[API] ✅ ${customers.length} Kunden geladen`);
+                
+                const select = document.getElementById("customer");
+                select.innerHTML = '<option value="">-- Bitte wählen --</option>';
+                
+                customers.forEach(customer => {
+                    CUSTOMERS[customer.id] = customer;
+                    
+                    const option = document.createElement('option');
+                    option.value = customer.id;
+                    option.textContent = customer.name;
+                    select.appendChild(option);
+                });
+                
+            } catch (e) {
+                console.error("[API] ❌ Fehler:", e);
+                alert("Konnte Kunden nicht laden!\nServer läuft? Fehler: " + e.message);
+            }
+        }
+        
+        // Kunden beim Laden der Seite abrufen
+        document.addEventListener('DOMContentLoaded', loadCustomersFromAPI);
+            const customerId = this.value;
+            
+            if (!customerId) {
+                // Reset
+                document.getElementById('customerInfo').classList.remove('show');
+                document.getElementById('message').disabled = true;
+                document.getElementById('sendBtn').disabled = true;
+                document.getElementById('chatArea').innerHTML = '<div class="loading">👋 Wähle einen Kunden um zu starten</div>';
+                currentCustomerId = null;
+                currentSessionId = null;
+                return;
+            }
+            
+            const customer = CUSTOMERS[customerId];
+            currentCustomerId = customer.id;
+            
+            // Zeige Kundeninfo
+            document.getElementById('customerName').innerText = customer.name;
+            document.getElementById('customerInfo').classList.add('show');
+            
+            // Enable Chat
+            document.getElementById('message').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('message').focus();
+            
+            // Chat leeren
+            document.getElementById('chatArea').innerHTML = `
+                <div class="loading">💬 Chat mit ${customer.name} bereit!</div>
+            `;
+            
+            // Versuche Session zu laden
+            try {
+                const res = await fetch(`${API_URL}/chat/customer/${customer.id}/sessions`);
+                const sessions = await res.json();
+                
+                if (sessions.length > 0) {
+                    currentSessionId = sessions[0].id;
+                    await loadMessages(currentSessionId);
+                } else {
+                    // Neue Session erstellen
+                    const createRes = await fetch(`${API_URL}/chat/sessions`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            customer_id: customer.id,
+                            title: "Chat"
+                        })
+                    });
+                    const session = await createRes.json();
+                    currentSessionId = session.id;
+                }
+            } catch (e) {
+                console.log("Server nicht erreichbar - nutze temporäre Session");
+                currentSessionId = `temp_${customer.id}`;
+            }
+        });
+        
+        // Nachrichten laden
+        async function loadMessages(sessionId) {
+            try {
+                const res = await fetch(`${API_URL}/chat/sessions/${sessionId}/messages`);
+                const messages = await res.json();
+                
+                const chatArea = document.getElementById('chatArea');
+                chatArea.innerHTML = "";
+                
+                messages.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.className = `message ${msg.role}`;
+                    div.textContent = msg.content;
+                    chatArea.appendChild(div);
+                });
+                
+                chatArea.scrollTop = chatArea.scrollHeight;
+            } catch (e) {
+                console.log("Konnte Nachrichten nicht laden:", e);
+            }
+        }
+        
+        // Nachricht senden
+        async function sendMessage() {
+            const textarea = document.getElementById('message');
+            const text = textarea.value.trim();
+            
+            if (!text) {
+                alert('Bitte schreibe eine Nachricht!');
+                return;
+            }
+            
+            // User-Nachricht anzeigen
+            const chatArea = document.getElementById('chatArea');
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message user';
+            userMsg.textContent = text;
+            chatArea.appendChild(userMsg);
+            
+            textarea.value = '';
+            chatArea.scrollTop = chatArea.scrollHeight;
+            
+            // Loading anzeigen
+            const loading = document.createElement('div');
+            loading.className = 'loading';
+            loading.textContent = '🤖 Tali tippt...';
+            chatArea.appendChild(loading);
+            
+            try {
+                const response = await fetch(`${API_URL}/chat/messages`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        content: text
+                    })
+                });
+                
+                chatArea.removeChild(loading);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Assistant-Nachricht anzeigen
+                const assistantMsg = document.createElement('div');
+                assistantMsg.className = 'message assistant';
+                assistantMsg.textContent = data.content;
+                chatArea.appendChild(assistantMsg);
+                
+                chatArea.scrollTop = chatArea.scrollHeight;
+            } catch (e) {
+                chatArea.removeChild(loading);
+                
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'message assistant';
+                errorMsg.textContent = '⚠️ Fehler: Server nicht erreichbar. Starte den Server mit: python main.py';
+                errorMsg.style.background = '#fee2e2';
+                errorMsg.style.color = '#991b1b';
+                chatArea.appendChild(errorMsg);
+            }
+        }
+        
+        // Enter zum Senden
+        document.getElementById('message').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

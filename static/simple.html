@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lexware Sync - SIMPLE</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 { color: #333; }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover { background: #4f46e5; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .customers {
+            margin-top: 20px;
+        }
+        .customer {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Lexware Synchronisation</h1>
+        <p>Klicken Sie auf den Button um Kunden von Lexware zu synchronisieren:</p>
+        
+        <button id="syncBtn">SYNC STARTEN</button>
+        <button id="loadBtn">Kunden laden</button>
+        
+        <div id="result"></div>
+        <div id="customers" class="customers"></div>
+    </div>
+
+    <script>
+        const API = 'http://127.0.0.1:8000';
+        
+        // SYNC BUTTON
+        document.getElementById('syncBtn').onclick = function() {
+            console.log('SYNC BUTTON CLICKED!');
+            const btn = this;
+            const result = document.getElementById('result');
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Syncing...';
+            result.textContent = 'Sende Request zu /customers/sync-lexware...';
+            
+            fetch(API + '/customers/sync-lexware', {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(data => {
+                result.textContent = '✅ ERFOLG!\n' + JSON.stringify(data, null, 2);
+                alert('✅ Sync erfolgreich: ' + data.message);
+            })
+            .catch(err => {
+                result.textContent = '❌ FEHLER!\n' + err;
+                alert('❌ Fehler: ' + err);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = 'SYNC STARTEN';
+            });
+        };
+        
+        // LOAD CUSTOMERS
+        document.getElementById('loadBtn').onclick = function() {
+            const customersDiv = document.getElementById('customers');
+            customersDiv.innerHTML = '<p>Lade Kunden...</p>';
+            
+            fetch(API + '/customers')
+            .then(r => r.json())
+            .then(customers => {
+                customersDiv.innerHTML = '<h2>Kunden (' + customers.length + '):</h2>';
+                customers.forEach(c => {
+                    customersDiv.innerHTML += '<div class="customer">' + 
+                        c.name + ' - ' + (c.email || 'keine Email') + 
+                        '</div>';
+                });
+            })
+            .catch(err => {
+                customersDiv.innerHTML = '<p style="color:red">Fehler: ' + err + '</p>';
+            });
+        };
+        
+        console.log('=== SIMPLE PAGE LOADED ===');
+    </script>
+</body>
+</html>

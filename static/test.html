@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Sync</title>
+</head>
+<body>
+    <h1>Test Sync Endpoint</h1>
+    <button id="syncBtn" onclick="testSync()">Test Sync</button>
+    <button onclick="testGetCustomers()">Test GET Customers</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testSync() {
+            const output = document.getElementById('output');
+            output.textContent = 'Sending POST to /customers/sync-lexware...\n';
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/customers/sync-lexware', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                output.textContent += `Status: ${response.status}\n`;
+                const data = await response.json();
+                output.textContent += `Response: ${JSON.stringify(data, null, 2)}\n`;
+            } catch (error) {
+                output.textContent += `Error: ${error.message}\n`;
+                console.error('Full error:', error);
+            }
+        }
+
+        async function testGetCustomers() {
+            const output = document.getElementById('output');
+            output.textContent = 'Sending GET to /customers...\n';
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/customers');
+                output.textContent += `Status: ${response.status}\n`;
+                const data = await response.json();
+                output.textContent += `Response: ${JSON.stringify(data, null, 2)}\n`;
+            } catch (error) {
+                output.textContent += `Error: ${error.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>

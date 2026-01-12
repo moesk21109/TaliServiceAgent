@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sync Kunden</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 40px;
+            background: #f5f7fa;
+        }
+        .box {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 24px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+        }
+        #result {
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 8px;
+            display: none;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>🔄 Kunden von Lexware synchronisieren</h1>
+        <p style="color: #666; margin-bottom: 24px;">
+            Dieser Sync holt NUR Kunden aus Lexware - Lieferanten werden ausgeschlossen.
+        </p>
+        <button onclick="syncCustomers()">Jetzt synchronisieren</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function syncCustomers() {
+            const btn = document.querySelector('button');
+            const result = document.getElementById('result');
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Synchronisiere...';
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/customers/sync-lexware', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                result.style.display = 'block';
+                result.className = 'success';
+                result.innerHTML = `
+                    <strong>✅ Sync erfolgreich!</strong><br>
+                    ${data.message}
+                `;
+                
+                setTimeout(() => {
+                    window.location.href = '/static/live.html';
+                }, 2000);
+                
+            } catch (e) {
+                result.style.display = 'block';
+                result.className = 'error';
+                result.innerHTML = `
+                    <strong>❌ Fehler beim Sync</strong><br>
+                    ${e.message}
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Jetzt synchronisieren';
+            }
+        }
+    </script>
+</body>
+</html>
