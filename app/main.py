@@ -26,29 +26,36 @@ from app.routers import customers, documents, chat, general_chat
 init_db()
 
 # Migrate database schema (add new columns if needed)
+# Note: On fresh PostgreSQL deployments, tables are created fresh by init_db()
+# These migrations are only needed for existing SQLite databases
 try:
     from sqlmodel import Session, text
-    from app.db import engine
-    with Session(engine) as session:
-        # Customer columns
-        try:
-            session.exec(text("SELECT customer_type FROM customer LIMIT 1"))
-        except:
-            print("[MIGRATION] Adding customer_type, vat_id, tax_number columns...")
-            session.exec(text("ALTER TABLE customer ADD COLUMN customer_type VARCHAR DEFAULT 'privat'"))
-            session.exec(text("ALTER TABLE customer ADD COLUMN vat_id VARCHAR"))
-            session.exec(text("ALTER TABLE customer ADD COLUMN tax_number VARCHAR"))
-            session.commit()
-            print("[MIGRATION] ✅ Customer columns added!")
-        
-        # ChatMessage is_file_upload column
-        try:
-            session.exec(text("SELECT is_file_upload FROM chatmessage LIMIT 1"))
-        except:
-            print("[MIGRATION] Adding is_file_upload column to chatmessage...")
-            session.exec(text("ALTER TABLE chatmessage ADD COLUMN is_file_upload BOOLEAN DEFAULT 0"))
-            session.commit()
-            print("[MIGRATION] ✅ is_file_upload column added!")
+    from app.db import engine, DATABASE_URL
+    
+    # Skip migrations for fresh PostgreSQL (tables created by init_db)
+    if "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL:
+        print("[MIGRATION] PostgreSQL detected - using fresh schema from init_db()")
+    else:
+        with Session(engine) as session:
+            # Customer columns (SQLite only)
+            try:
+                session.exec(text("SELECT customer_type FROM customer LIMIT 1"))
+            except:
+                print("[MIGRATION] Adding customer_type, vat_id, tax_number columns...")
+                session.exec(text("ALTER TABLE customer ADD COLUMN customer_type VARCHAR DEFAULT 'privat'"))
+                session.exec(text("ALTER TABLE customer ADD COLUMN vat_id VARCHAR"))
+                session.exec(text("ALTER TABLE customer ADD COLUMN tax_number VARCHAR"))
+                session.commit()
+                print("[MIGRATION] ✅ Customer columns added!")
+            
+            # ChatMessage is_file_upload column (SQLite only)
+            try:
+                session.exec(text("SELECT is_file_upload FROM chatmessage LIMIT 1"))
+            except:
+                print("[MIGRATION] Adding is_file_upload column to chatmessage...")
+                session.exec(text("ALTER TABLE chatmessage ADD COLUMN is_file_upload BOOLEAN DEFAULT 0"))
+                session.commit()
+                print("[MIGRATION] ✅ is_file_upload column added!")
 except Exception as e:
     print(f"[MIGRATION] Note: {e}")
 
