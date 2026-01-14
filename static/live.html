@@ -995,6 +995,125 @@
                 font-size: 16px;
             }
         }
+        
+        /* Produktauswahl mit Checkboxen */
+        .product-selection-container {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+        
+        .product-selection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .product-selection-header h4 {
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+        
+        .product-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.6rem;
+            margin-bottom: 0.4rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .product-item:hover {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.05);
+        }
+        
+        .product-item.selected {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .product-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+        
+        .product-info {
+            flex: 1;
+        }
+        
+        .product-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.2rem;
+        }
+        
+        .product-description {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-bottom: 0.3rem;
+        }
+        
+        .product-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+        
+        .product-price {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--accent);
+            min-width: 80px;
+            text-align: right;
+        }
+        
+        .create-quote-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: background 0.15s;
+        }
+        
+        .create-quote-btn:hover {
+            background: var(--accent-hover);
+        }
+        
+        .create-quote-btn:disabled {
+            background: var(--border);
+            cursor: not-allowed;
+        }
+        
+        .selected-count {
+            padding: 0.2rem 0.5rem;
+            background: var(--accent);
+            color: white;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -1098,6 +1217,7 @@
             
             <div class="quick-actions-bar" id="quickActions">
                 <button class="quick-action" onclick="quickAction('preise')" title="Preise">💰</button>
+                <button class="quick-action" onclick="loadProductsInteractive()" title="Produkte auswählen" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; font-size: 1.5rem; padding: 0.8rem; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);">📦</button>
                 <button class="quick-action" onclick="quickAction('angebot')" title="Angebot">📋</button>
                 <button class="quick-action" onclick="quickAction('rechnung')" title="Rechnung">🧾</button>
                 <button class="quick-action" onclick="quickAction('abschlag')" title="Abschlag">📊</button>
@@ -2660,6 +2780,244 @@
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/sw.js').catch(() => {});
             });
+        }
+        
+        // =========================
+        // PRODUKTAUSWAHL FEATURE
+        // =========================
+        
+        let selectedProducts = [];
+        
+        // Wenn AI Produktliste sendet, zeige interaktive Auswahl
+        function renderProductSelection(products) {
+            const container = document.createElement('div');
+            container.className = 'product-selection-container';
+            
+            const header = document.createElement('div');
+            header.className = 'product-selection-header';
+            header.innerHTML = `
+                <h4>📦 Verfügbare Produkte & Dienstleistungen</h4>
+                <span class="selected-count" id="selectedCount" style="display: none;">0 ausgewählt</span>
+            `;
+            container.appendChild(header);
+            
+            // Gruppiere Produkte nach Typ
+            const services = products.filter(p => p.type === 'SERVICE');
+            const materials = products.filter(p => p.type === 'MATERIAL' || p.type === 'PRODUCT');
+            
+            // Services Sektion
+            if (services.length > 0) {
+                const servicesHeader = document.createElement('div');
+                servicesHeader.style.cssText = 'margin-top: 1rem; padding: 0.5rem; background: rgba(59, 130, 246, 0.1); border-radius: 6px; font-weight: 600; font-size: 0.85rem; color: var(--accent);';
+                servicesHeader.innerHTML = `🔧 Dienstleistungen (${services.length})`;
+                container.appendChild(servicesHeader);
+                
+                const servicesDiv = document.createElement('div');
+                services.forEach((product, index) => {
+                    servicesDiv.appendChild(createProductItem(product, index));
+                });
+                container.appendChild(servicesDiv);
+            }
+            
+            // Materials Sektion
+            if (materials.length > 0) {
+                const materialsHeader = document.createElement('div');
+                materialsHeader.style.cssText = 'margin-top: 1rem; padding: 0.5rem; background: rgba(245, 158, 11, 0.1); border-radius: 6px; font-weight: 600; font-size: 0.85rem; color: var(--warning);';
+                materialsHeader.innerHTML = `📦 Produkte & Material (${materials.length})`;
+                container.appendChild(materialsHeader);
+                
+                const materialsDiv = document.createElement('div');
+                materials.forEach((product, index) => {
+                    materialsDiv.appendChild(createProductItem(product, index + services.length));
+                });
+                container.appendChild(materialsDiv);
+            }
+            
+            const button = document.createElement('button');
+            button.className = 'create-quote-btn';
+            button.disabled = true;
+            button.innerHTML = `<span>📋</span> Angebot mit ausgewählten Positionen erstellen`;
+            button.addEventListener('click', createQuoteFromSelection);
+            container.appendChild(button);
+            
+            return container;
+        }
+        
+        // Erstelle einzelnes Produkt-Item
+        function createProductItem(product, index) {
+            const item = document.createElement('div');
+            item.className = 'product-item';
+            item.dataset.index = index;
+            
+            const price = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(product.price || 0);
+            
+            item.innerHTML = `
+                <input type="checkbox" class="product-checkbox" data-product-id="${product.id}" />
+                <div class="product-info">
+                    <div class="product-name">${product.title || product.name}</div>
+                    <div class="product-description">${(product.description || '').substring(0, 100)}${product.description?.length > 100 ? '...' : ''}</div>
+                    <div class="product-meta">
+                        <span>Einheit: ${product.unit || 'Stück'}</span>
+                    </div>
+                </div>
+                <div class="product-price">${price}</div>
+            `;
+            
+            item.addEventListener('click', (e) => {
+                if (e.target.type !== 'checkbox') {
+                    const checkbox = item.querySelector('.product-checkbox');
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
+            
+            const checkbox = item.querySelector('.product-checkbox');
+            checkbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    item.classList.add('selected');
+                    selectedProducts.push(product);
+                } else {
+                    item.classList.remove('selected');
+                    selectedProducts = selectedProducts.filter(p => p.id !== product.id);
+                }
+                updateSelectedCount();
+            });
+            
+            return item;
+        }
+        
+        function updateSelectedCount() {
+            const countEl = document.getElementById('selectedCount');
+            const btn = document.querySelector('.create-quote-btn');
+            
+            if (selectedProducts.length > 0) {
+                countEl.textContent = `${selectedProducts.length} ausgewählt`;
+                countEl.style.display = 'inline-block';
+                if (btn) btn.disabled = false;
+            } else {
+                countEl.style.display = 'none';
+                if (btn) btn.disabled = true;
+            }
+        }
+        
+        async function createQuoteFromSelection() {
+            if (!state.customerId) {
+                showToast('Bitte wählen Sie zuerst einen Kunden aus', 'error');
+                return;
+            }
+            
+            if (selectedProducts.length === 0) {
+                showToast('Bitte wählen Sie mindestens ein Produkt aus', 'error');
+                return;
+            }
+            
+            const btn = document.querySelector('.create-quote-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<span>⏳</span> Erstelle Angebot...`;
+            }
+            
+            try {
+                // Erstelle items Array im richtigen Format
+                const items = selectedProducts.map(p => ({
+                    product_id: p.id,
+                    name: p.title || p.name,
+                    description: p.description || '',
+                    quantity: 1,
+                    unit_price: p.price || 0,
+                    unit: p.unit || 'Stück',
+                    type: p.type || 'SERVICE'
+                }));
+                
+                // Direkt API-Call zum Angebot erstellen
+                const response = await fetch(`${API}/chat/create-quotation`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customer_id: state.customerId,
+                        items: items
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to create quotation');
+                
+                const result = await response.json();
+                
+                // Zeige Erfolg
+                addMessage('assistant', `✅ ${result.message || 'Angebot erfolgreich erstellt!'}`);
+                showToast('Angebot erstellt!', 'success');
+                
+                // Lade Dokumente neu
+                if (state.customerId) {
+                    await loadDocs();
+                }
+                
+                // Reset selection
+                selectedProducts = [];
+                document.querySelectorAll('.product-checkbox').forEach(cb => cb.checked = false);
+                document.querySelectorAll('.product-item').forEach(item => item.classList.remove('selected'));
+                updateSelectedCount();
+                
+            } catch (error) {
+                console.error('Error creating quote:', error);
+                addMessage('assistant', '❌ Fehler beim Erstellen des Angebots. Bitte versuchen Sie es erneut.');
+                showToast('Fehler beim Erstellen', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = `<span>📋</span> Angebot mit ausgewählten Positionen erstellen`;
+                }
+            }
+        }
+        
+        // Erweitere addMessage um Produktlisten-Erkennung
+        const originalAddMessage = addMessage;
+        addMessage = function(role, content) {
+            const msgEl = originalAddMessage(role, content);
+            
+            // Prüfe ob content JSON mit Produktliste ist (z.B. nach "preise" Anfrage)
+            // Dies ist ein Hook - die AI müsste speziell formatieren, oder wir erkennen Keywords
+            
+            return msgEl;
+        };
+        
+        // Lade Produkte interaktiv mit Checkboxen
+        async function loadProductsInteractive() {
+            if (!state.customerId) {
+                showToast('Bitte wählen Sie zuerst einen Kunden aus', 'error');
+                return;
+            }
+            
+            addMessage('assistant', '⏳ Lade Produktkatalog...');
+            
+            try {
+                const response = await fetch(`${API}/chat/products`);
+                if (!response.ok) throw new Error('Failed to load products');
+                
+                const products = await response.json();
+                
+                // Entferne Loading-Nachricht
+                const messages = document.getElementById('messages');
+                const lastMsg = messages.lastElementChild;
+                if (lastMsg && lastMsg.textContent.includes('Lade Produktkatalog')) {
+                    lastMsg.remove();
+                }
+                
+                // Zeige Produktauswahl
+                const selectionContainer = renderProductSelection(products);
+                const msgContainer = document.createElement('div');
+                msgContainer.className = 'message assistant';
+                msgContainer.appendChild(selectionContainer);
+                messages.appendChild(msgContainer);
+                messages.scrollTop = messages.scrollHeight;
+                
+                showToast(`${products.length} Produkte geladen`, 'success');
+                
+            } catch (error) {
+                console.error('Error loading products:', error);
+                addMessage('assistant', '❌ Fehler beim Laden der Produkte. Bitte versuchen Sie es erneut.');
+                showToast('Fehler beim Laden', 'error');
+            }
         }
     </script>
 </body>

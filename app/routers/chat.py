@@ -675,18 +675,51 @@ async def upload_chat_file(
         temp_file.close()
         
         try:
-            import PyPDF2
-            with open(temp_file.name, 'rb') as pdf_file:
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                max_pages = min(15, len(pdf_reader.pages))
+            # Try PyMuPDF first for better text extraction
+            try:
+                import fitz  # PyMuPDF
+                doc = fitz.open(temp_file.name)
+                num_pages = len(doc)
+                file_info += f" - {num_pages} Seiten"
                 
+                max_pages = min(15, num_pages)
                 for page_num in range(max_pages):
-                    page = pdf_reader.pages[page_num]
-                    extracted_text += page.extract_text() + "\n\n"
+                    page = doc[page_num]
+                    extracted_text += page.get_text() + "\n\n"
                 
-                file_info += f" - {len(pdf_reader.pages)} Seiten"
+                doc.close()
+                print(f"[PDF] Extracted {len(extracted_text)} chars via PyMuPDF")
+                
+                # If extraction failed (scanned/image PDF), provide helpful description
+                if len(extracted_text.strip()) < 100 and num_pages > 0:
+                    extracted_text = f"""⚠️ Diese PDF scheint eine gescannte Datei oder ein Bild zu sein (z.B. ein Grundriss).
+                    
+Ich kann {num_pages} Seite(n) sehen, aber keinen Text extrahieren.
+
+Für Grundrisse und technische Zeichnungen:
+- Beschreiben Sie bitte, was Sie wissen möchten
+- Ich kann allgemeine Informationen zu Elektro-Installationen geben
+- Oder teilen Sie mir die wichtigen Details manuell mit
+
+Was möchten Sie von diesem Dokument wissen?"""
+            
+            except ImportError:
+                # Fallback to PyPDF2 if PyMuPDF not available
+                import PyPDF2
+                with open(temp_file.name, 'rb') as pdf_file:
+                    pdf_reader = PyPDF2.PdfReader(pdf_file)
+                    max_pages = min(15, len(pdf_reader.pages))
+                    
+                    for page_num in range(max_pages):
+                        page = pdf_reader.pages[page_num]
+                        extracted_text += page.extract_text() + "\n\n"
+                    
+                    file_info += f" - {len(pdf_reader.pages)} Seiten"
+                    print(f"[PDF] Extracted {len(extracted_text)} chars via PyPDF2")
+                
         except Exception as e:
             file_info += f"\n\n⚠️ PDF konnte nicht gelesen werden: {str(e)}"
+            print(f"[PDF] Error: {e}")
         finally:
             os.unlink(temp_file.name)
     
@@ -777,3 +810,66 @@ def delete_chat_message(
     db_session.delete(message)
     db_session.commit()
     return {"message": "Chat message deleted"}
+
+
+@router.get("/products")
+def get_products():
+    """Get all available products/services from Lexware."""
+    try:
+        products = lexware_client.get_products()
+        return products
+    except Exception as e:
+        print(f"[ERROR] Failed to load products: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load products")
+
+
+@router.post("/create-quotation")
+def create_quotation_direct(
+    data: dict,
+    db_session: Session = Depends(get_session)
+):
+    """Create quotation directly with selected products."""
+    try:
+        customer_id = data.get("customer_id")
+        items = data.get("items", [])
+        
+        if not customer_id:
+            raise HTTPException(status_code=400, detail="customer_id is required")
+        
+        if not items:
+            raise HTTPException(status_code=400, detail="items are required")
+        
+        # Verify customer exists
+        customer = db_session.get(Customer, customer_id)
+        if not customer:
+            raise HTTPException(status_code=404, detail="Customer not found")
+        
+        if not customer.lexware_id:
+            raise HTTPException(status_code=400, detail="Customer has no Lexware ID")
+        
+        # Create quotation via Lexware - use lexware_id instead of database ID
+        voucher_data = {
+            "type": "angebot",
+            "customer_id": customer.lexware_id,  # Use UUID from Lexware
+            "items": items
+        }
+        
+        result = lexware_client.create_voucher(voucher_data)
+        
+        if result and result.get("success"):
+            return {
+                "success": True,
+                "message": result.get("message", "Angebot erfolgreich erstellt!"),
+                "quotation_id": result.get("id")
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Failed to create quotation")
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Failed to create quotation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

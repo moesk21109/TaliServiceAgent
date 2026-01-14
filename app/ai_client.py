@@ -157,7 +157,8 @@ class AIClient:
                                         "description": {"type": "string", "description": "WICHTIG: Die komplette Beschreibung aus get_lexware_products übernehmen!"},
                                         "quantity": {"type": "number", "description": "Menge"},
                                         "unit_price": {"type": "number", "description": "Einzelpreis in Euro (price aus get_lexware_products)"},
-                                        "unit": {"type": "string", "description": "Einheit (unit aus get_lexware_products)"}
+                                        "unit": {"type": "string", "description": "Einheit (unit aus get_lexware_products)"},
+                                        "type": {"type": "string", "description": "Produkttyp SERVICE oder MATERIAL (type aus get_lexware_products)"}
                                     }
                                 }
                             }
@@ -187,7 +188,8 @@ class AIClient:
                                         "description": {"type": "string", "description": "WICHTIG: Die komplette Beschreibung aus get_lexware_products übernehmen!"},
                                         "quantity": {"type": "number", "description": "Menge"},
                                         "unit_price": {"type": "number", "description": "Einzelpreis in Euro (price aus get_lexware_products)"},
-                                        "unit": {"type": "string", "description": "Einheit (unit aus get_lexware_products)"}
+                                        "unit": {"type": "string", "description": "Einheit (unit aus get_lexware_products)"},
+                                        "type": {"type": "string", "description": "Produkttyp SERVICE oder MATERIAL (type aus get_lexware_products)"}
                                     },
                                     "required": ["name", "quantity", "unit_price"]
                                 }

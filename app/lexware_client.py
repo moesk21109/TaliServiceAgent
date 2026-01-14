@@ -152,13 +152,18 @@ class LexwareClient:
             # Format for easier consumption
             products = []
             for article in all_articles:
+                article_type = article.get("type", "PRODUCT")
+                # DEBUG: Log first product to see actual type format from Lexoffice
+                if len(products) == 0:
+                    print(f"[LEXWARE DEBUG] First article type from API: '{article_type}' (raw: {article.get('type')})")
+                
                 products.append({
                     "id": article.get("id"),
                     "title": article.get("title", "Unbekanntes Produkt"),
                     "description": article.get("description", ""),
                     "price": article.get("price", {}).get("netPrice", 0),
                     "unit": article.get("unitName", "Stück"),
-                    "type": article.get("type", "PRODUCT")
+                    "type": article_type  # Keep original case from Lexoffice
                 })
             
             return products
@@ -220,7 +225,10 @@ class LexwareClient:
                 product_id = item.get("product_id") or item.get("id")
                 if product_id:
                     line_item["id"] = product_id
-                    line_item["type"] = "service"  # or "material" - services are more common
+                    # Use type from item if available, otherwise default to 'service'
+                    item_type = item.get("type", "SERVICE").upper()
+                    # Map: SERVICE -> service, MATERIAL/PRODUCT -> material
+                    line_item["type"] = "material" if item_type in ["MATERIAL", "PRODUCT"] else "service"
                 
                 # Log mit Warnung wenn keine Beschreibung
                 desc_len = len(line_item['description'])
