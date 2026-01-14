@@ -73,7 +73,7 @@
             result.style.display = 'none';
             
             try {
-                const response = await fetch('http://127.0.0.1:8000/customers/sync-lexware', {
+                const response = await fetch(window.location.origin + '/customers/sync-lexware', {
                     method: 'POST'
                 });
                 

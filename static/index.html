@@ -903,10 +903,8 @@
     </div>
     
     <script>
-        // Dynamische API-URL: localhost für lokale Entwicklung, ansonsten aktuelle Host-Adresse
-        const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-            ? 'http://127.0.0.1:8000' 
-            : `http://${window.location.hostname}:8000`;
+        // Dynamische API-URL: Verwendet den aktuellen Origin (funktioniert mit HTTP und HTTPS)
+        const API = window.location.origin;
         let state = {
             customerId: null,
             sessionId: null,

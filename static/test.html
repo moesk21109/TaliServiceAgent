@@ -15,7 +15,7 @@
             output.textContent = 'Sending POST to /customers/sync-lexware...\n';
             
             try {
-                const response = await fetch('http://127.0.0.1:8000/customers/sync-lexware', {
+                const response = await fetch(window.location.origin + '/customers/sync-lexware', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -36,7 +36,7 @@
             output.textContent = 'Sending GET to /customers...\n';
             
             try {
-                const response = await fetch('http://127.0.0.1:8000/customers');
+                const response = await fetch(window.location.origin + '/customers');
                 output.textContent += `Status: ${response.status}\n`;
                 const data = await response.json();
                 output.textContent += `Response: ${JSON.stringify(data, null, 2)}\n`;
