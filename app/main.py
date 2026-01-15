@@ -96,9 +96,9 @@ if os.path.exists("static"):
 
 @app.get("/")
 def root():
-    """Serve main HTML page with no-cache headers."""
+    """Serve main HTML page (live.html) with no-cache headers."""
     return FileResponse(
-        "static/index.html", 
+        "static/live.html", 
         media_type="text/html",
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
