@@ -55,7 +55,7 @@ def get_usage_stats(session: Session = Depends(get_session)):
     
     # Failed requests
     failed_query = select(func.count(APIUsage.id)).where(
-        APIUsage.request_successful == False
+        APIUsage.request_successful is False
     )
     failed_requests = session.exec(failed_query).first() or 0
     

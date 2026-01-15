@@ -35,20 +35,25 @@ class AIClient:
             from app.models import APIUsage
             from sqlmodel import Session
             
-            session = next(get_session())
+            # Use context manager for proper session handling
             try:
-                usage = APIUsage(
-                    provider=provider,
-                    model=model,
-                    endpoint=endpoint,
-                    tokens_used=tokens_used,
-                    request_successful=success,
-                    error_message=error_message
-                )
-                session.add(usage)
-                session.commit()
-            finally:
-                session.close()
+                session = next(get_session())
+                try:
+                    usage = APIUsage(
+                        provider=provider,
+                        model=model,
+                        endpoint=endpoint,
+                        tokens_used=tokens_used,
+                        request_successful=success,
+                        error_message=error_message
+                    )
+                    session.add(usage)
+                    session.commit()
+                finally:
+                    session.close()
+            except StopIteration:
+                # Session creation failed - log but don't crash
+                print(f"[AI] Warning: Could not get database session for tracking")
         except Exception as e:
             # Don't fail if tracking fails
             print(f"[AI] Warning: Failed to track API usage: {e}")
