@@ -269,10 +269,11 @@
             flex: 1;
             overflow-y: auto;
             padding: 1rem;
-            padding-bottom: 120px; /* Platz für fixiertes Input + Quick Actions */
+            padding-bottom: 160px; /* Mehr Platz für fixiertes Input + Quick Actions + Upload */
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
+            scroll-behavior: smooth;
         }
         .message {
             max-width: 85%;
@@ -448,12 +449,14 @@
             bottom: 0;
             left: 350px; /* Sidebar width */
             right: 0;
-            padding: 0.5rem 1rem;
+            padding: 0.75rem 1rem;
+            padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); /* iOS Safe Area */
             background: var(--card);
             border-top: 1px solid var(--border);
             display: flex;
             gap: 0.5rem;
             z-index: 100;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
         }
         textarea {
             flex: 1;
@@ -483,7 +486,7 @@
         /* Schnellaktionen */
         .quick-actions-bar {
             position: fixed;
-            bottom: 70px; /* Über Input */
+            bottom: 75px; /* Über Input - angepasst */
             left: 350px;
             right: 0;
             display: none;
@@ -494,6 +497,7 @@
             flex-wrap: wrap;
             justify-content: center;
             z-index: 99;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
         }
         .quick-actions-bar.active { display: flex; }
         .quick-action {
@@ -939,12 +943,18 @@
                 min-height: 0;
             }
             
+            .messages {
+                padding-bottom: 180px; /* Mehr Platz auf Mobile */
+            }
+            
             .input-area { 
                 left: 0; /* Volle Breite auf Mobile */
-                padding: 0.5rem; 
+                padding: 0.5rem;
+                padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
             }
             .quick-actions-bar {
                 left: 0; /* Volle Breite auf Mobile */
+                bottom: 80px; /* Angepasst für Mobile */
                 padding: 0.4rem;
                 overflow-x: auto;
                 flex-wrap: nowrap;
