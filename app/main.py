@@ -129,6 +129,12 @@ def general_chat_html():
     return FileResponse("static/general-chat.html", media_type="text/html")
 
 
+@app.get("/usage.html")
+def usage_html():
+    """Serve API usage statistics page."""
+    return FileResponse("static/usage.html", media_type="text/html")
+
+
 @app.get("/health")
 def health():
     """Health check endpoint."""
