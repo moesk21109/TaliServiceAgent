@@ -856,7 +856,73 @@ async def upload_document(
     # Check if it's a floor plan with little/no text
     if len(extracted_text.strip()) < 100 and num_pages > 0:
         if any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor']):
-            extracted_text = f"""📐 GRUNDRISS-ANALYSE
+            # Try Vision AI analysis for floor plans
+            try:
+                print("[PDF] 🔍 Attempting Vision AI analysis for floor plan...")
+                import base64
+                from openai import OpenAI
+                
+                # Convert first page to image
+                import fitz
+                doc = fitz.open(temp_file.name)
+                page = doc[0]
+                pix = page.get_pixmap(dpi=150)
+                img_bytes = pix.tobytes("png")
+                doc.close()
+                
+                # Encode to base64
+                img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+                
+                # Call GPT-4o Vision
+                openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                vision_response = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": """Analysiere diesen Grundriss sehr detailliert!
+
+EXTRAHIERE:
+1. **ALLE Raumnamen** mit exakten Bezeichnungen (z.B. "Gruppenraum 1", "Küche", "WC", "Büro")
+2. **Raumgrößen** in m² (wenn angegeben)
+3. **Besondere Markierungen** (Türen, Fenster, Geräte-Symbole)
+4. **Technische Angaben** (Elektro-Symbole, Anschlüsse)
+
+FORMAT:
+📐 GRUNDRISS-ANALYSE:
+
+RÄUME:
+- [Raumname]: [Größe]m² - [Beschreibung]
+- [Raumname]: [Größe]m² - [Beschreibung]
+...
+
+GESAMTFLÄCHE: [Summe]m²
+
+BESONDERHEITEN:
+- [Was du siehst: Küche-Ausstattung, Sanitär, etc.]
+
+Sei sehr präzise und liste JEDEN erkennbaren Raum auf!"""
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{img_base64}"
+                                }
+                            }
+                        ]
+                    }],
+                    max_tokens=1500
+                )
+                
+                extracted_text = vision_response.choices[0].message.content
+                print(f"[PDF] ✅ Vision AI analysis successful: {len(extracted_text)} chars")
+                
+            except Exception as vision_error:
+                print(f"[PDF] ⚠️ Vision AI failed: {vision_error}")
+                # Fallback to manual instructions
+                extracted_text = f"""📐 GRUNDRISS-ANALYSE
 
 Ich erkenne, dass dies ein Grundriss ist ({num_pages} Seite(n)).
 
