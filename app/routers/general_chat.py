@@ -862,28 +862,28 @@ async def upload_document(
             print(f"[PDF] 🔍 Attempting Vision AI analysis for floor plan... (text_len={len(extracted_text)}, is_floor_plan={is_floor_plan})")
             import base64
             from openai import OpenAI
-                
-                # Convert first page to image
-                import fitz
-                doc = fitz.open(temp_file.name)
-                page = doc[0]
-                pix = page.get_pixmap(dpi=150)
-                img_bytes = pix.tobytes("png")
-                doc.close()
-                
-                # Encode to base64
-                img_base64 = base64.b64encode(img_bytes).decode('utf-8')
-                
-                # Call GPT-4o Vision
-                openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-                vision_response = openai_client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": """Analysiere diesen Grundriss sehr detailliert!
+            
+            # Convert first page to image
+            import fitz
+            doc = fitz.open(temp_file.name)
+            page = doc[0]
+            pix = page.get_pixmap(dpi=150)
+            img_bytes = pix.tobytes("png")
+            doc.close()
+            
+            # Encode to base64
+            img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+            
+            # Call GPT-4o Vision
+            openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            vision_response = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": """Analysiere diesen Grundriss sehr detailliert!
 
 EXTRAHIERE:
 1. **ALLE Raumnamen** mit exakten Bezeichnungen (z.B. "Gruppenraum 1", "Küche", "WC", "Büro")
@@ -905,27 +905,27 @@ BESONDERHEITEN:
 - [Was du siehst: Küche-Ausstattung, Sanitär, etc.]
 
 Sei sehr präzise und liste JEDEN erkennbaren Raum auf!"""
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/png;base64,{img_base64}"
-                                }
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{img_base64}"
                             }
-                        ]
-                    }],
-                    max_tokens=1500
-                )
-                
-                extracted_text = vision_response.choices[0].message.content
-                print(f"[PDF] ✅ Vision AI analysis successful: {len(extracted_text)} chars")
-                
-            except Exception as vision_error:
-                print(f"[PDF] ⚠️ Vision AI failed: {vision_error}")
-                import traceback
-                traceback.print_exc()
-                # Fallback to manual instructions
-                extracted_text = f"""📐 GRUNDRISS-ANALYSE - Vision AI Fehler
+                        }
+                    ]
+                }],
+                max_tokens=1500
+            )
+            
+            extracted_text = vision_response.choices[0].message.content
+            print(f"[PDF] ✅ Vision AI analysis successful: {len(extracted_text)} chars")
+            
+        except Exception as vision_error:
+            print(f"[PDF] ⚠️ Vision AI failed: {vision_error}")
+            import traceback
+            traceback.print_exc()
+            # Fallback to manual instructions
+            extracted_text = f"""📐 GRUNDRISS-ANALYSE - Vision AI Fehler
 
 ⚠️ Vision AI konnte den Grundriss nicht analysieren.
 Fehler: {str(vision_error)}
