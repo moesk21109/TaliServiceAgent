@@ -840,27 +840,28 @@ async def upload_document(
                     
                 except ImportError as ie:
                     print(f"[PDF] ❌ OCR libraries not available: {ie}")
-                    extracted_text = f"⚠️ Diese PDF scheint gescannt zu sein (Bild-PDF).\nPyPDF2 konnte keinen Text extrahieren.\n\nFür OCR benötigt: pymupdf, pytesseract"
+                    extracted_text = ""  # Empty so Vision AI can take over
                 except Exception as ocr_error:
                     print(f"[PDF] ❌ OCR failed: {ocr_error}")
                     import traceback
                     traceback.print_exc()
-                    extracted_text = f"⚠️ Text-Extraktion mit PyPDF2 ergab wenig Inhalt.\nOCR-Versuch fehlgeschlagen: {str(ocr_error)}"
+                    extracted_text = ""  # Empty so Vision AI can take over
             
     except Exception as e:
         print(f"[PDF] Extraction failed: {e}")
         import traceback
         traceback.print_exc()
-        extracted_text = f"❌ Text-Extraktion fehlgeschlagen: {str(e)}"
+        extracted_text = ""  # Empty so Vision AI can take over
     
-    # Check if it's a floor plan with little/no text
-    if len(extracted_text.strip()) < 100 and num_pages > 0:
-        if any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor']):
-            # Try Vision AI analysis for floor plans
-            try:
-                print("[PDF] 🔍 Attempting Vision AI analysis for floor plan...")
-                import base64
-                from openai import OpenAI
+    # Check if it's a floor plan with little/no text OR if filename suggests floor plan
+    is_floor_plan = any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor', 'kindergarten'])
+    
+    if (len(extracted_text.strip()) < 100 or is_floor_plan) and num_pages > 0:
+        # Try Vision AI analysis for floor plans
+        try:
+            print(f"[PDF] 🔍 Attempting Vision AI analysis for floor plan... (text_len={len(extracted_text)}, is_floor_plan={is_floor_plan})")
+            import base64
+            from openai import OpenAI
                 
                 # Convert first page to image
                 import fitz
@@ -921,10 +922,13 @@ Sei sehr präzise und liste JEDEN erkennbaren Raum auf!"""
                 
             except Exception as vision_error:
                 print(f"[PDF] ⚠️ Vision AI failed: {vision_error}")
+                import traceback
+                traceback.print_exc()
                 # Fallback to manual instructions
-                extracted_text = f"""📐 GRUNDRISS-ANALYSE
+                extracted_text = f"""📐 GRUNDRISS-ANALYSE - Vision AI Fehler
 
-Ich erkenne, dass dies ein Grundriss ist ({num_pages} Seite(n)).
+⚠️ Vision AI konnte den Grundriss nicht analysieren.
+Fehler: {str(vision_error)}
 
 **FÜR EINE DETAILLIERTE ELEKTRO-PLANUNG BRAUCHE ICH:**
 
