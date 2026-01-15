@@ -709,17 +709,23 @@ class AIClient:
         print(f"[AI REQUEST] Tool choice: {chosen_tool_choice}")
         
         # Call OpenAI with function calling
-        response = self.openai_client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                *messages
-            ],
-            tools=self.get_available_tools(),
-            tool_choice=chosen_tool_choice,
-            temperature=0.7,
-            max_tokens=2000
-        )
+        try:
+            response = self.openai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    *messages
+                ],
+                tools=self.get_available_tools(),
+                tool_choice=chosen_tool_choice,
+                temperature=0.7,
+                max_tokens=2000
+            )
+        except Exception as e:
+            print(f"[AI] ❌ OPENAI API ERROR: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise  # Re-raise so the calling function can handle it
         
         message = response.choices[0].message
         
