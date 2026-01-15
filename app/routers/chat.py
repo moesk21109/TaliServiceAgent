@@ -692,11 +692,42 @@ async def upload_chat_file(
                 
                 # If extraction failed (scanned/image PDF), provide helpful description
                 if len(extracted_text.strip()) < 100 and num_pages > 0:
-                    extracted_text = f"""⚠️ Diese PDF scheint eine gescannte Datei oder ein Bild zu sein (z.B. ein Grundriss).
+                    # Check if it's likely a floor plan (Grundriss)
+                    if any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor']):
+                        extracted_text = f"""📐 GRUNDRISS-ANALYSE
+
+Ich erkenne, dass dies ein Grundriss ist ({num_pages} Seite(n)).
+
+**FÜR EINE DETAILLIERTE ELEKTRO-PLANUNG BRAUCHE ICH:**
+
+**Bitte beschreiben Sie jeden Raum:**
+1. **Raum-Name** (z.B. Wohnzimmer, Küche, Büro)
+2. **Größe** (ungefähr in m²)
+3. **Verwendung** (Was passiert im Raum?)
+4. **Besondere Geräte** (z.B. Herd, Waschmaschine, PC-Arbeitsplatz)
+5. **Gewünschte Ausstattung** (z.B. mehr Steckdosen, Deckenleuchten, Wandlampen)
+
+**STANDARD-EMPFEHLUNGEN pro Raum-Typ:**
+
+🏠 **Wohnzimmer:** 6-8 Steckdosen, 2-3 Lichtauslässe, TV-Anschluss, Netzwerk
+🍳 **Küche:** Herd-Anschluss (400V), 8-10 Steckdosen, Dunstabzug, Unterbau-Beleuchtung
+🛏️ **Schlafzimmer:** 4-6 Steckdosen (je 2 pro Bettseite), 1-2 Lichtauslässe
+🚿 **Bad:** FI-geschützt, 2-3 Steckdosen, Spiegelbeleuchtung, Lüfter
+👔 **Büro:** 8-12 Steckdosen, mehrere Netzwerk-Anschlüsse, gute Beleuchtung
+🏃 **Flur:** 2-3 Steckdosen, Deckenleuchte, evtl. Bewegungsmelder
+
+**Beschreiben Sie mir die Räume, dann erstelle ich:**
+- Genaue Steckdosen-Planung
+- Lichtpunkt-Verteilung  
+- Material-Liste
+- Kosten-Schätzung
+- Angebot mit allen Positionen aus Lexoffice"""
+                    else:
+                        extracted_text = f"""⚠️ Diese PDF scheint eine gescannte Datei oder ein Bild zu sein.
                     
 Ich kann {num_pages} Seite(n) sehen, aber keinen Text extrahieren.
 
-Für Grundrisse und technische Zeichnungen:
+Für technische Zeichnungen und Pläne:
 - Beschreiben Sie bitte, was Sie wissen möchten
 - Ich kann allgemeine Informationen zu Elektro-Installationen geben
 - Oder teilen Sie mir die wichtigen Details manuell mit
