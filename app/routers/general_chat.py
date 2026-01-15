@@ -700,11 +700,20 @@ ANTWORTE IM FORMAT:
                     system_prompt += f"\n- Steuernummer: {customer_data['tax_number']}"
         
         # Call AI (chat_with_messages is synchronous, not async)
-        response = ai_client.chat_with_messages(
-            messages=messages,
-            system_prompt=system_prompt,
-            customer_data=customer_data  # Pass customer data to AI
-        )
+        try:
+            response = ai_client.chat_with_messages(
+                messages=messages,
+                system_prompt=system_prompt,
+                customer_data=customer_data  # Pass customer data to AI
+            )
+        except Exception as ai_error:
+            print(f"[GENERAL_CHAT] ❌ AI ERROR: {type(ai_error).__name__}: {str(ai_error)}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=500,
+                detail=f"AI request failed: {str(ai_error)}"
+            )
         
         # Check if response contains material list
         logs = None
