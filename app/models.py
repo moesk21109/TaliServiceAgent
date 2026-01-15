@@ -161,3 +161,27 @@ class DocumentResponse(SQLModel):
     model_used: str
     provider: str
     created_at: datetime
+
+
+class APIUsage(SQLModel, table=True):
+    """Track API usage for monitoring and limits."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    provider: str  # "openai", "anthropic", etc.
+    model: str  # "gpt-4o-mini", etc.
+    endpoint: str  # "chat", "generate_document", etc.
+    tokens_used: Optional[int] = None  # Total tokens used in request
+    request_successful: bool = Field(default=True)  # Whether request succeeded
+    error_message: Optional[str] = None  # Error details if failed
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class APIUsageStats(SQLModel):
+    """API usage statistics response."""
+    total_requests: int
+    total_tokens: int
+    requests_today: int
+    tokens_today: int
+    requests_this_month: int
+    tokens_this_month: int
+    failed_requests: int
+    last_request_at: Optional[datetime] = None
