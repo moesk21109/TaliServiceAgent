@@ -853,13 +853,21 @@ async def upload_document(
         traceback.print_exc()
         extracted_text = ""  # Empty so Vision AI can take over
     
-    # Check if it's a floor plan with little/no text OR if filename suggests floor plan
-    is_floor_plan = any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor', 'kindergarten'])
+    # Check if it's a floor plan - look for keywords OR if analysis_type is blueprint
+    is_floor_plan = any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor', 'kindergarten', 'kita', 'eg', 'og', 'ug'])
+    is_blueprint_type = analysis_type == "blueprint"
     
-    if (len(extracted_text.strip()) < 100 or is_floor_plan) and num_pages > 0:
+    # Check if extracted text looks like garbage (no real words)
+    real_words = len([w for w in extracted_text.split() if len(w) > 3 and w.isalpha()])
+    has_useful_text = real_words > 20
+    
+    print(f"[PDF] DEBUG: filename={file.filename}, is_floor_plan={is_floor_plan}, is_blueprint={is_blueprint_type}, text_len={len(extracted_text)}, real_words={real_words}, has_useful_text={has_useful_text}")
+    
+    # Try Vision AI if: little useful text OR it's a floor plan/blueprint
+    if (not has_useful_text or is_floor_plan or is_blueprint_type) and num_pages > 0:
         # Try Vision AI analysis for floor plans
         try:
-            print(f"[PDF] 🔍 Attempting Vision AI analysis for floor plan... (text_len={len(extracted_text)}, is_floor_plan={is_floor_plan})")
+            print(f"[PDF] 🔍 Attempting Vision AI analysis... (triggering because: useful_text={has_useful_text}, floor_plan={is_floor_plan}, blueprint={is_blueprint_type})")
             import base64
             from openai import OpenAI
             
