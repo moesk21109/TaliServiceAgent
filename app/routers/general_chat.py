@@ -853,6 +853,44 @@ async def upload_document(
         traceback.print_exc()
         extracted_text = f"❌ Text-Extraktion fehlgeschlagen: {str(e)}"
     
+    # Check if it's a floor plan with little/no text
+    if len(extracted_text.strip()) < 100 and num_pages > 0:
+        if any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor']):
+            extracted_text = f"""📐 GRUNDRISS-ANALYSE
+
+Ich erkenne, dass dies ein Grundriss ist ({num_pages} Seite(n)).
+
+**FÜR EINE DETAILLIERTE ELEKTRO-PLANUNG BRAUCHE ICH:**
+
+**Bitte beschreiben Sie jeden Raum:**
+1. **Raum-Name** (z.B. Wohnzimmer, Küche, Büro)
+2. **Größe** (ungefähr in m²)
+3. **Verwendung** (Was passiert im Raum?)
+4. **Besondere Geräte** (z.B. Herd, Waschmaschine, PC-Arbeitsplatz)
+5. **Gewünschte Ausstattung** (z.B. mehr Steckdosen, Deckenleuchten, Wandlampen)
+
+**STANDARD-EMPFEHLUNGEN pro Raum-Typ:**
+
+🏠 **Wohnzimmer:** 6-8 Steckdosen, 2-3 Lichtauslässe, TV-Anschluss, Netzwerk
+🍳 **Küche:** Herd-Anschluss (400V), 8-10 Steckdosen, Dunstabzug, Unterbau-Beleuchtung  
+🛏️ **Schlafzimmer:** 4-6 Steckdosen (je 2 pro Bettseite), 1-2 Lichtauslässe
+🚿 **Bad:** FI-geschützt, 2-3 Steckdosen, Spiegelbeleuchtung, Lüfter
+👔 **Büro:** 8-12 Steckdosen, mehrere Netzwerk-Anschlüsse, gute Beleuchtung
+🏃 **Flur:** 2-3 Steckdosen, Deckenleuchte, evtl. Bewegungsmelder
+
+**BEISPIEL-FORMAT für Ihre Beschreibung:**
+"Wohnzimmer 25m², Fernseher, Couch-Ecke, benötigt viele Steckdosen
+Küche 12m², E-Herd, Geschirrspüler, Kühlschrank
+Schlafzimmer 15m², 2 Nachttischlampen
+..."
+
+**Ich erstelle dann für Sie:**
+✅ Genaue Steckdosen-Planung pro Raum
+✅ Lichtpunkt-Verteilung  
+✅ Material-Liste aus Lexoffice
+✅ Kosten-Schätzung
+✅ Fertiges Angebot zum Download"""
+    
     # Store extracted text globally for chat context
     _uploaded_files["last_file"]["extracted_text"] = extracted_text
     _uploaded_files["last_file"]["extracted_vat_id"] = None
