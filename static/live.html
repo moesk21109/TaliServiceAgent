@@ -216,7 +216,7 @@
         .empty-docs { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 1rem; }
         
         /* Chat-Bereich */
-        .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
         
         /* Chat Header mit Session */
         .chat-header {
@@ -269,6 +269,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 1rem;
+            padding-bottom: 120px; /* Platz für fixiertes Input + Quick Actions */
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
@@ -443,11 +444,16 @@
         
         /* Input */
         .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 350px; /* Sidebar width */
+            right: 0;
             padding: 0.5rem 1rem;
             background: var(--card);
             border-top: 1px solid var(--border);
             display: flex;
             gap: 0.5rem;
+            z-index: 100;
         }
         textarea {
             flex: 1;
@@ -476,6 +482,10 @@
         
         /* Schnellaktionen */
         .quick-actions-bar {
+            position: fixed;
+            bottom: 70px; /* Über Input */
+            left: 350px;
+            right: 0;
             display: none;
             gap: 0.5rem;
             padding: 0.5rem 1rem;
@@ -483,6 +493,7 @@
             border-top: 1px solid var(--border);
             flex-wrap: wrap;
             justify-content: center;
+            z-index: 99;
         }
         .quick-actions-bar.active { display: flex; }
         .quick-action {
@@ -928,14 +939,17 @@
                 min-height: 0;
             }
             
-            .input-area { padding: 0.5rem; }
-            textarea { font-size: 16px; } /* Verhindert iOS Zoom */
-            
-            .quick-actions-bar { 
-                padding: 0.4rem; 
+            .input-area { 
+                left: 0; /* Volle Breite auf Mobile */
+                padding: 0.5rem; 
+            }
+            .quick-actions-bar {
+                left: 0; /* Volle Breite auf Mobile */
+                padding: 0.4rem;
                 overflow-x: auto;
                 flex-wrap: nowrap;
             }
+            textarea { font-size: 16px; } /* Verhindert iOS Zoom */
             .quick-action { 
                 padding: 0.5rem 0.8rem; 
                 font-size: 0.8rem;
