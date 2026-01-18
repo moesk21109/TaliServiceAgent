@@ -867,7 +867,8 @@ async def upload_document(
     if (not has_useful_text or is_floor_plan or is_blueprint_type) and num_pages > 0:
         # Try Vision AI analysis for floor plans
         try:
-            print(f"[PDF] 🔍 Attempting Vision AI analysis... (triggering because: useful_text={has_useful_text}, floor_plan={is_floor_plan}, blueprint={is_blueprint_type})")
+            print(f"[PDF] 🔍 STARTING Vision AI analysis...")
+            print(f"[PDF] 🔍 Triggering because: useful_text={has_useful_text}, floor_plan={is_floor_plan}, blueprint={is_blueprint_type}")
             import base64
             from openai import OpenAI
             
@@ -974,12 +975,20 @@ Schlafzimmer 15m², 2 Nachttischlampen
     _uploaded_files["last_file"]["extracted_vat_id"] = None
     _uploaded_files["last_file"]["extracted_tax_number"] = None
     
+    # Check if this was analyzed by Vision AI (floor plan)
+    is_vision_analyzed = "📐 GRUNDRISS-ANALYSE" in extracted_text or "RÄUME:" in extracted_text or "m²" in extracted_text
+    
     # AI analysis with FULL extracted text + structured tax data extraction
+    # SKIP for floor plans that were already analyzed by Vision AI
     ai_analysis = ""
     extracted_vat_id = None
     extracted_tax_number = None
     
-    if extracted_text and len(extracted_text) > 10:
+    if is_vision_analyzed:
+        # Floor plan was analyzed by Vision AI - use that directly!
+        print(f"[PDF] ✅ Using Vision AI analysis directly (floor plan detected)")
+        ai_analysis = extracted_text
+    elif extracted_text and len(extracted_text) > 10:
         try:
             prompt = f"""Analysiere dieses PDF-Dokument '{file.filename}' und extrahiere alle wichtigen Informationen:
 
