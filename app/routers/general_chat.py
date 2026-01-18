@@ -854,17 +854,28 @@ async def upload_document(
         extracted_text = ""  # Empty so Vision AI can take over
     
     # Check if it's a floor plan - look for keywords OR if analysis_type is blueprint
-    is_floor_plan = any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor', 'kindergarten', 'kita', 'eg', 'og', 'ug'])
+    is_floor_plan = any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor', 'kindergarten', 'kita', 'eg', 'og', 'ug', 'etage', 'geschoss'])
     is_blueprint_type = analysis_type == "blueprint"
     
     # Check if extracted text looks like garbage (no real words)
-    real_words = len([w for w in extracted_text.split() if len(w) > 3 and w.isalpha()])
-    has_useful_text = real_words > 20
+    # More aggressive detection: text with many special chars or very short words is garbage
+    words = extracted_text.split()
+    real_words = len([w for w in words if len(w) > 3 and w.isalpha()])
+    special_char_ratio = sum(1 for c in extracted_text if not c.isalnum() and not c.isspace()) / max(len(extracted_text), 1)
+    has_useful_text = real_words > 30 and special_char_ratio < 0.3  # Stricter criteria
     
-    print(f"[PDF] DEBUG: filename={file.filename}, is_floor_plan={is_floor_plan}, is_blueprint={is_blueprint_type}, text_len={len(extracted_text)}, real_words={real_words}, has_useful_text={has_useful_text}")
+    print(f"[PDF] DEBUG: filename={file.filename}")
+    print(f"[PDF] DEBUG: is_floor_plan={is_floor_plan}, is_blueprint={is_blueprint_type}")
+    print(f"[PDF] DEBUG: text_len={len(extracted_text)}, real_words={real_words}, special_char_ratio={special_char_ratio:.2f}")
+    print(f"[PDF] DEBUG: has_useful_text={has_useful_text}")
     
-    # Try Vision AI if: little useful text OR it's a floor plan/blueprint
-    if (not has_useful_text or is_floor_plan or is_blueprint_type) and num_pages > 0:
+    # Try Vision AI if: little useful text OR it's a floor plan/blueprint OR filename suggests image
+    # ALWAYS try Vision AI for scanned/image PDFs
+    should_try_vision = (not has_useful_text) or is_floor_plan or is_blueprint_type
+    
+    print(f"[PDF] DEBUG: should_try_vision={should_try_vision}")
+    
+    if should_try_vision and num_pages > 0:
         # Try Vision AI analysis for floor plans
         try:
             print(f"[PDF] 🔍 STARTING Vision AI analysis...")
