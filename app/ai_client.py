@@ -673,7 +673,7 @@ class AIClient:
         system_prompt: str,
         customer_data: Optional[dict] = None,
         provider: str = "openai",
-        model: str = "gpt-4o-mini"
+        model: str = "gpt-4o"
     ) -> str:
         """
         Chat with AI using message history and Lexware integration.

@@ -624,7 +624,7 @@ Antworte auf Deutsch, professionell aber persönlich. Du sollst Arbeit ABNEHMEN 
             system_prompt=system_prompt,
             customer_data=customer_data,
             provider="openai",
-            model="gpt-4o-mini"
+            model="gpt-4o"
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI error: {str(e)}")
