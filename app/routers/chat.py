@@ -141,6 +141,21 @@ def send_chat_message(
     # Get customer info for context
     customer = db_session.get(Customer, chat_session.customer_id)
     
+    # WICHTIG: Session-Titel/Topic als Auftragsbeschreibung speichern!
+    current_project = ""
+    if chat_session.title or chat_session.topic:
+        current_project = f"""
+🏗️ AKTUELLER AUFTRAG/PROJEKT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Projekt: {chat_session.title or 'Nicht benannt'}
+📝 Beschreibung: {chat_session.topic or 'Keine Beschreibung'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ WICHTIG: Der Kunde hat diesen Auftrag erstellt! Beziehe dich auf diese Projektdetails!
+Wenn der Kunde z.B. "Einfamilienhaus mit 2 Wohneinheiten" als Auftrag erstellt hat,
+dann weißt du, dass es um ein EFH mit 2 WE geht - frag nicht nochmal nach!
+"""
+    
     # Hole ALLE Sessions dieses Kunden für Kontext
     all_customer_sessions = db_session.exec(
         select(ChatSession)
@@ -161,11 +176,15 @@ def send_chat_message(
         "name": customer.name,
         "email": customer.email,
         "lexware_id": customer.lexware_id,
-        "has_history": len(all_customer_sessions) > 0
+        "has_history": len(all_customer_sessions) > 0,
+        "current_project_title": chat_session.title,
+        "current_project_topic": chat_session.topic
     }
     
     # Build system prompt with context
     system_prompt = f"""
+{current_project}
+
 📧 FIRMENDATEN TALI SERVICE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🏢 Firma: Tali Service
