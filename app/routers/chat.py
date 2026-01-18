@@ -1,6 +1,6 @@
 """Chat router - Manage customer conversations and AI chat."""
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
 from sqlmodel import Session, select
 import json
 import re
@@ -856,7 +856,7 @@ def get_products():
 
 @router.post("/create-quotation")
 def create_quotation_direct(
-    data: dict,
+    data: dict = Body(...),
     db_session: Session = Depends(get_session)
 ):
     """Create quotation directly with selected products."""
