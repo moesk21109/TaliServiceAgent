@@ -861,8 +861,12 @@ def create_quotation_direct(
 ):
     """Create quotation directly with selected products."""
     try:
+        print(f"[QUOTATION] Received data: {data}")
+        
         customer_id = data.get("customer_id")
         items = data.get("items", [])
+        
+        print(f"[QUOTATION] customer_id={customer_id}, items_count={len(items)}")
         
         if not customer_id:
             raise HTTPException(status_code=400, detail="customer_id is required")
@@ -872,11 +876,15 @@ def create_quotation_direct(
         
         # Verify customer exists
         customer = db_session.get(Customer, customer_id)
+        print(f"[QUOTATION] Customer lookup: {customer}")
+        
         if not customer:
             raise HTTPException(status_code=404, detail="Customer not found")
         
         if not customer.lexware_id:
-            raise HTTPException(status_code=400, detail="Customer has no Lexware ID")
+            raise HTTPException(status_code=400, detail="Customer has no Lexware ID - bitte erst in Lexoffice synchronisieren")
+        
+        print(f"[QUOTATION] Using Lexware ID: {customer.lexware_id}")
         
         # Create quotation via Lexware - use lexware_id instead of database ID
         voucher_data = {
@@ -885,7 +893,9 @@ def create_quotation_direct(
             "items": items
         }
         
+        print(f"[QUOTATION] Calling lexware_client.create_voucher...")
         result = lexware_client.create_voucher(voucher_data)
+        print(f"[QUOTATION] Result: {result}")
         
         if result and result.get("success"):
             return {
@@ -894,13 +904,17 @@ def create_quotation_direct(
                 "quotation_id": result.get("id")
             }
         else:
+            error_msg = result.get("error", "Failed to create quotation") if result else "No result from Lexware"
+            print(f"[QUOTATION] ERROR: {error_msg}")
             raise HTTPException(
                 status_code=500,
-                detail=result.get("error", "Failed to create quotation")
+                detail=error_msg
             )
             
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] Failed to create quotation: {e}")
+        import traceback
+        print(f"[QUOTATION] EXCEPTION: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
