@@ -754,14 +754,31 @@ async def upload_chat_file(
                     import base64
                     from openai import OpenAI
                     
-                    # Convert first page to image - HIGHER DPI for better text recognition
+                    # =============================================
+                    # MAXIMALE QUALITÄT für kleine/verzerrte PDFs
+                    # =============================================
                     page = doc[0]
-                    pix = page.get_pixmap(dpi=200)  # Higher DPI for better detail
+                    
+                    # Methode 1: Sehr hohe DPI (300) für maximale Schärfe
+                    # Methode 2: Zoom-Matrix für noch mehr Details
+                    zoom = 3.0  # 3x Zoom für bessere Lesbarkeit
+                    mat = fitz.Matrix(zoom, zoom)
+                    pix = page.get_pixmap(matrix=mat, dpi=300)
+                    
                     img_bytes = pix.tobytes("png")
+                    print(f"[CHAT-PDF] Image size: {pix.width}x{pix.height} pixels")
+                    
+                    # Wenn Bild zu groß (>20MB), reduziere Zoom
+                    if len(img_bytes) > 20_000_000:
+                        print(f"[CHAT-PDF] Image too large, reducing zoom...")
+                        zoom = 2.0
+                        mat = fitz.Matrix(zoom, zoom)
+                        pix = page.get_pixmap(matrix=mat, dpi=200)
+                        img_bytes = pix.tobytes("png")
                     
                     # Encode to base64
                     img_base64 = base64.b64encode(img_bytes).decode('utf-8')
-                    print(f"[CHAT-PDF] Image base64 size: {len(img_base64)} chars")
+                    print(f"[CHAT-PDF] Image base64 size: {len(img_base64)} chars ({len(img_bytes)/1024:.0f} KB)")
                     
                     # Call GPT-4o Vision
                     openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -773,6 +790,8 @@ async def upload_chat_file(
                                 {
                                     "type": "text",
                                     "text": """Du bist ein Experte für Grundriss-Analyse. Analysiere dieses Bild SEHR DETAILLIERT!
+
+⚠️ WICHTIG: Das Bild wurde hochskaliert für bessere Lesbarkeit. Schau genau hin!
 
 🔍 EXTRAHIERE ALLES WAS DU SIEHST:
 
