@@ -757,97 +757,101 @@ async def upload_chat_file(
                     # =============================================
                     # MAXIMALE QUALITÄT für kleine/verzerrte PDFs
                     # =============================================
-                    page = doc[0]
                     
-                    # Methode 1: Sehr hohe DPI (300) für maximale Schärfe
-                    # Methode 2: Zoom-Matrix für noch mehr Details
-                    zoom = 3.0  # 3x Zoom für bessere Lesbarkeit
-                    mat = fitz.Matrix(zoom, zoom)
-                    pix = page.get_pixmap(matrix=mat, dpi=300)
-                    
-                    img_bytes = pix.tobytes("png")
-                    print(f"[CHAT-PDF] Image size: {pix.width}x{pix.height} pixels")
-                    
-                    # Wenn Bild zu groß (>20MB), reduziere Zoom
-                    if len(img_bytes) > 20_000_000:
-                        print(f"[CHAT-PDF] Image too large, reducing zoom...")
-                        zoom = 2.0
-                        mat = fitz.Matrix(zoom, zoom)
-                        pix = page.get_pixmap(matrix=mat, dpi=200)
-                        img_bytes = pix.tobytes("png")
-                    
-                    # Encode to base64
-                    img_base64 = base64.b64encode(img_bytes).decode('utf-8')
-                    print(f"[CHAT-PDF] Image base64 size: {len(img_base64)} chars ({len(img_bytes)/1024:.0f} KB)")
-                    
-                    # Call GPT-4o Vision
                     openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-                    vision_response = openai_client.chat.completions.create(
-                        model="gpt-4o",
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": """Du bist ein Experte für Grundriss-Analyse. Analysiere dieses Bild SEHR DETAILLIERT!
+                    all_analyses = []
+                    
+                    # Analysiere bis zu 3 Seiten
+                    pages_to_analyze = min(3, num_pages)
+                    print(f"[CHAT-PDF] Will analyze {pages_to_analyze} page(s)")
+                    
+                    for page_idx in range(pages_to_analyze):
+                        page = doc[page_idx]
+                        print(f"[CHAT-PDF] Processing page {page_idx + 1}...")
+                        
+                        # Maximale Qualität: 3x Zoom + 300 DPI
+                        zoom = 3.0
+                        mat = fitz.Matrix(zoom, zoom)
+                        pix = page.get_pixmap(matrix=mat, dpi=300)
+                        
+                        img_bytes = pix.tobytes("png")
+                        print(f"[CHAT-PDF] Page {page_idx + 1}: {pix.width}x{pix.height} pixels ({len(img_bytes)/1024:.0f} KB)")
+                        
+                        # Wenn Bild zu groß (>15MB), reduziere
+                        if len(img_bytes) > 15_000_000:
+                            print(f"[CHAT-PDF] Too large, reducing...")
+                            zoom = 2.0
+                            mat = fitz.Matrix(zoom, zoom)
+                            pix = page.get_pixmap(matrix=mat, dpi=200)
+                            img_bytes = pix.tobytes("png")
+                        
+                        img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+                        
+                        # Vision API Call für diese Seite
+                        page_prompt = f"""Du bist ein Experte für Grundriss-Analyse. 
+Dies ist SEITE {page_idx + 1} von {pages_to_analyze}.
 
-⚠️ WICHTIG: Das Bild wurde hochskaliert für bessere Lesbarkeit. Schau genau hin!
+⚠️ WICHTIG: Das Bild wurde 3x vergrößert für bessere Lesbarkeit!
 
 🔍 EXTRAHIERE ALLES WAS DU SIEHST:
 
-1. **ALLE RÄUME** - Liste JEDEN Raum auf:
-   - Exakter Raumname (z.B. "Gruppenraum 1", "Sanitärbereich Kinder", "Büro Leitung")
-   - Quadratmeter (m²) - SUCHE NACH ZAHLEN im oder neben dem Raum!
-   - Maße wenn sichtbar (z.B. "4,50 x 3,20 m")
-   
-2. **ALLE ZAHLEN UND MASSE** die du siehst:
-   - Raumgrößen in m²
-   - Längenangaben in m oder cm
-   - Flächenangaben
-   
-3. **BESCHRIFTUNGEN** - Lies JEDEN Text:
-   - Raumnamen
-   - Türbeschriftungen  
-   - Legende/Symbole
-   - Maßstab
-   
-4. **TECHNISCHE DETAILS**:
-   - Türen (Anzahl, Art)
-   - Fenster
-   - Symbole für Elektro/Sanitär
+1. **ALLE RÄUME** mit:
+   - Exakter Raumname (lies JEDEN Text!)
+   - m² Angabe (suche nach Zahlen mit "m²" oder "qm")
+   - Maße in Metern
 
-📐 FORMAT DEINER ANTWORT:
+2. **ALLE ZAHLEN** die du findest:
+   - Flächen (m², qm)
+   - Längen/Breiten
+   - Raumnummern
 
-## GRUNDRISS-ANALYSE
+3. **ALLE TEXTE/BESCHRIFTUNGEN**
 
-### RÄUME MIT DETAILS:
-| Raum | Größe (m²) | Maße | Besonderheiten |
-|------|------------|------|----------------|
-| [Name] | [X m²] | [L x B] | [Details] |
+📐 FORMAT:
 
-### ZUSAMMENFASSUNG:
-- Gesamtanzahl Räume: X
-- Geschätzte Gesamtfläche: ca. X m²
-- Gebäudetyp: [z.B. Kindergarten, Wohnhaus]
+## SEITE {page_idx + 1} - ANALYSE
 
-### ALLE ERKANNTEN ZAHLEN/TEXTE:
-[Liste hier ALLE Zahlen und Texte auf die du im Bild siehst]
+### RÄUME:
+| Nr | Raum | m² | Maße | Details |
+|----|------|-----|------|---------|
+| 1 | [Name] | [X] | [LxB] | [Info] |
 
-⚠️ WICHTIG: Wenn du Zahlen/m² siehst, schreibe sie auf! Auch wenn sie klein sind!"""
-                                },
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/png;base64,{img_base64}",
-                                        "detail": "high"
+### ALLE ERKANNTEN TEXTE/ZAHLEN:
+[Liste JEDEN Text und JEDE Zahl auf!]
+
+⚠️ Schreibe auch unleserliche/unsichere Texte auf mit (?) markiert!"""
+
+                        vision_response = openai_client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=[{
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": page_prompt},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/png;base64,{img_base64}",
+                                            "detail": "high"
+                                        }
                                     }
-                                }
-                            ]
-                        }],
-                        max_tokens=3000
-                    )
+                                ]
+                            }],
+                            max_tokens=3000
+                        )
+                        
+                        page_analysis = vision_response.choices[0].message.content
+                        all_analyses.append(page_analysis)
+                        print(f"[CHAT-PDF] ✅ Page {page_idx + 1} analyzed ({len(page_analysis)} chars)")
                     
-                    vision_analysis = vision_response.choices[0].message.content
+                    # Kombiniere alle Seiten-Analysen
+                    if len(all_analyses) == 1:
+                        vision_analysis = all_analyses[0]
+                    else:
+                        vision_analysis = f"# 📐 GRUNDRISS-ANALYSE ({pages_to_analyze} Seiten)\n\n"
+                        for i, analysis in enumerate(all_analyses):
+                            vision_analysis += f"\n---\n{analysis}\n"
+                    
+                    print(f"[CHAT-PDF] ✅ Vision AI SUCCESS! Total: {len(vision_analysis)} chars")
                     print(f"[CHAT-PDF] ✅ Vision AI SUCCESS! Response length: {len(vision_analysis)}")
                     print(f"[CHAT-PDF] Vision response preview: {vision_analysis[:200]}...")
                     
