@@ -1361,8 +1361,70 @@
         async function init() {
             await loadCustomers();
             setupEvents();
-            // Allgemeinen Chat-Modus aktivieren (ohne Kunde)
-            enableGeneralChat();
+            
+            // Gespeicherten Zustand wiederherstellen
+            await restoreLastState();
+        }
+        
+        // Speichere aktuellen Zustand
+        function saveState() {
+            const stateToSave = {
+                customerId: state.customerId,
+                sessionId: state.sessionId
+            };
+            localStorage.setItem('taliServiceState', JSON.stringify(stateToSave));
+            console.log('[STATE] Saved:', stateToSave);
+        }
+        
+        // Stelle letzten Zustand wieder her
+        async function restoreLastState() {
+            try {
+                const saved = localStorage.getItem('taliServiceState');
+                if (!saved) {
+                    // Kein gespeicherter Zustand - allgemeiner Chat
+                    enableGeneralChat();
+                    return;
+                }
+                
+                const lastState = JSON.parse(saved);
+                console.log('[STATE] Restoring:', lastState);
+                
+                if (lastState.customerId && state.customers[lastState.customerId]) {
+                    // Kunde wiederherstellen
+                    document.getElementById('customerSelect').value = lastState.customerId;
+                    state.customerId = lastState.customerId;
+                    state.customer = state.customers[lastState.customerId];
+                    
+                    await Promise.all([loadSessions(), loadDocs(), loadCustomerChatHistory(), loadCustomerDocuments()]);
+                    
+                    document.getElementById('sessionSelect').disabled = false;
+                    document.getElementById('newSessionBtn').disabled = false;
+                    
+                    // Session wiederherstellen wenn vorhanden
+                    if (lastState.sessionId) {
+                        const sessionSelect = document.getElementById('sessionSelect');
+                        // Prüfen ob die Session noch existiert
+                        const optionExists = Array.from(sessionSelect.options).some(opt => opt.value == lastState.sessionId);
+                        if (optionExists) {
+                            sessionSelect.value = lastState.sessionId;
+                            state.sessionId = lastState.sessionId;
+                            await loadMessages();
+                            enableChat();
+                            console.log('[STATE] Restored session:', lastState.sessionId);
+                            return;
+                        }
+                    }
+                    
+                    // Keine Session - Kunden-Chat-Modus
+                    enableCustomerChat();
+                } else {
+                    // Kein gültiger Kunde - allgemeiner Chat
+                    enableGeneralChat();
+                }
+            } catch (e) {
+                console.error('[STATE] Error restoring:', e);
+                enableGeneralChat();
+            }
         }
         
         function enableGeneralChat() {
@@ -1420,6 +1482,9 @@
             // User kann jetzt allgemein über den Kunden chatten
             state.sessionId = null;
             enableCustomerChat();
+            
+            // Zustand speichern
+            saveState();
             
             // Sidebar auf Mobile schließen nach Auswahl
             closeSidebarOnMobile();
@@ -1495,11 +1560,17 @@
         async function onSessionChange(e) {
             if (!e.target.value) {
                 document.getElementById('deleteBtn').disabled = true;
+                state.sessionId = null;
+                saveState(); // Speichern dass keine Session gewählt
+                enableCustomerChat();
                 return;
             }
             state.sessionId = parseInt(e.target.value);
             await loadMessages();
             enableChat();
+            
+            // Zustand speichern
+            saveState();
         }
 
         async function createNewSession() {
@@ -1521,6 +1592,9 @@
                 addMessage('assistant', `✅ "${title}" erstellt!`);
                 enableChat();
                 showToast('Auftrag erstellt');
+                
+                // Zustand speichern
+                saveState();
             } catch (e) { showToast('Fehler', 'error'); }
         }
 
