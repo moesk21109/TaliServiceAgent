@@ -754,9 +754,9 @@ async def upload_chat_file(
                     import base64
                     from openai import OpenAI
                     
-                    # Convert first page to image
+                    # Convert first page to image - HIGHER DPI for better text recognition
                     page = doc[0]
-                    pix = page.get_pixmap(dpi=150)
+                    pix = page.get_pixmap(dpi=200)  # Higher DPI for better detail
                     img_bytes = pix.tobytes("png")
                     
                     # Encode to base64
@@ -772,36 +772,60 @@ async def upload_chat_file(
                             "content": [
                                 {
                                     "type": "text",
-                                    "text": """Analysiere diesen Grundriss sehr detailliert!
+                                    "text": """Du bist ein Experte für Grundriss-Analyse. Analysiere dieses Bild SEHR DETAILLIERT!
 
-EXTRAHIERE:
-1. **ALLE Raumnamen** mit exakten Bezeichnungen (z.B. "Gruppenraum 1", "Küche", "WC", "Büro")
-2. **Raumgrößen** in m² (wenn angegeben)
-3. **Besondere Markierungen** (Türen, Fenster, Geräte-Symbole)
-4. **Technische Angaben** (Elektro-Symbole, Anschlüsse)
+🔍 EXTRAHIERE ALLES WAS DU SIEHST:
 
-FORMAT:
-📐 GRUNDRISS-ANALYSE:
+1. **ALLE RÄUME** - Liste JEDEN Raum auf:
+   - Exakter Raumname (z.B. "Gruppenraum 1", "Sanitärbereich Kinder", "Büro Leitung")
+   - Quadratmeter (m²) - SUCHE NACH ZAHLEN im oder neben dem Raum!
+   - Maße wenn sichtbar (z.B. "4,50 x 3,20 m")
+   
+2. **ALLE ZAHLEN UND MASSE** die du siehst:
+   - Raumgrößen in m²
+   - Längenangaben in m oder cm
+   - Flächenangaben
+   
+3. **BESCHRIFTUNGEN** - Lies JEDEN Text:
+   - Raumnamen
+   - Türbeschriftungen  
+   - Legende/Symbole
+   - Maßstab
+   
+4. **TECHNISCHE DETAILS**:
+   - Türen (Anzahl, Art)
+   - Fenster
+   - Symbole für Elektro/Sanitär
 
-RÄUME:
-- [Raumname]: [Größe]m² - [Beschreibung]
-...
+📐 FORMAT DEINER ANTWORT:
 
-GESAMT:
-- Anzahl Räume: X
-- Gesamtfläche: ca. X m²
+## GRUNDRISS-ANALYSE
 
-Wenn du keine Raumdaten erkennen kannst, beschreibe was du siehst."""
+### RÄUME MIT DETAILS:
+| Raum | Größe (m²) | Maße | Besonderheiten |
+|------|------------|------|----------------|
+| [Name] | [X m²] | [L x B] | [Details] |
+
+### ZUSAMMENFASSUNG:
+- Gesamtanzahl Räume: X
+- Geschätzte Gesamtfläche: ca. X m²
+- Gebäudetyp: [z.B. Kindergarten, Wohnhaus]
+
+### ALLE ERKANNTEN ZAHLEN/TEXTE:
+[Liste hier ALLE Zahlen und Texte auf die du im Bild siehst]
+
+⚠️ WICHTIG: Wenn du Zahlen/m² siehst, schreibe sie auf! Auch wenn sie klein sind!"""
                                 },
                                 {
                                     "type": "image_url",
                                     "image_url": {
-                                        "url": f"data:image/png;base64,{img_base64}"
+                                        "url": f"data:image/png;base64,{img_base64}",
+                                        "detail": "high"
                                     }
                                 }
                             ]
                         }],
-                        max_tokens=2000
+                        max_tokens=3000
                     )
                     
                     vision_analysis = vision_response.choices[0].message.content
