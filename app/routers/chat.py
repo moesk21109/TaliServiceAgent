@@ -710,83 +710,134 @@ async def upload_chat_file(
         temp_file.write(content)
         temp_file.close()
         
+        num_pages = 0
+        vision_analysis = None
+        
         try:
             # Try PyMuPDF first for better text extraction
-            try:
-                import fitz  # PyMuPDF
-                doc = fitz.open(temp_file.name)
-                num_pages = len(doc)
-                file_info += f" - {num_pages} Seiten"
-                
-                max_pages = min(15, num_pages)
-                for page_num in range(max_pages):
-                    page = doc[page_num]
-                    extracted_text += page.get_text() + "\n\n"
-                
-                doc.close()
-                print(f"[PDF] Extracted {len(extracted_text)} chars via PyMuPDF")
-                
-                # If extraction failed (scanned/image PDF), provide helpful description
-                if len(extracted_text.strip()) < 100 and num_pages > 0:
-                    # Check if it's likely a floor plan (Grundriss)
-                    if any(keyword in file.filename.lower() for keyword in ['grundriss', 'plan', 'layout', 'floor']):
-                        extracted_text = f"""📐 GRUNDRISS-ANALYSE
-
-Ich erkenne, dass dies ein Grundriss ist ({num_pages} Seite(n)).
-
-**FÜR EINE DETAILLIERTE ELEKTRO-PLANUNG BRAUCHE ICH:**
-
-**Bitte beschreiben Sie jeden Raum:**
-1. **Raum-Name** (z.B. Wohnzimmer, Küche, Büro)
-2. **Größe** (ungefähr in m²)
-3. **Verwendung** (Was passiert im Raum?)
-4. **Besondere Geräte** (z.B. Herd, Waschmaschine, PC-Arbeitsplatz)
-5. **Gewünschte Ausstattung** (z.B. mehr Steckdosen, Deckenleuchten, Wandlampen)
-
-**STANDARD-EMPFEHLUNGEN pro Raum-Typ:**
-
-🏠 **Wohnzimmer:** 6-8 Steckdosen, 2-3 Lichtauslässe, TV-Anschluss, Netzwerk
-🍳 **Küche:** Herd-Anschluss (400V), 8-10 Steckdosen, Dunstabzug, Unterbau-Beleuchtung
-🛏️ **Schlafzimmer:** 4-6 Steckdosen (je 2 pro Bettseite), 1-2 Lichtauslässe
-🚿 **Bad:** FI-geschützt, 2-3 Steckdosen, Spiegelbeleuchtung, Lüfter
-👔 **Büro:** 8-12 Steckdosen, mehrere Netzwerk-Anschlüsse, gute Beleuchtung
-🏃 **Flur:** 2-3 Steckdosen, Deckenleuchte, evtl. Bewegungsmelder
-
-**Beschreiben Sie mir die Räume, dann erstelle ich:**
-- Genaue Steckdosen-Planung
-- Lichtpunkt-Verteilung  
-- Material-Liste
-- Kosten-Schätzung
-- Angebot mit allen Positionen aus Lexoffice"""
-                    else:
-                        extracted_text = f"""⚠️ Diese PDF scheint eine gescannte Datei oder ein Bild zu sein.
-                    
-Ich kann {num_pages} Seite(n) sehen, aber keinen Text extrahieren.
-
-Für technische Zeichnungen und Pläne:
-- Beschreiben Sie bitte, was Sie wissen möchten
-- Ich kann allgemeine Informationen zu Elektro-Installationen geben
-- Oder teilen Sie mir die wichtigen Details manuell mit
-
-Was möchten Sie von diesem Dokument wissen?"""
+            import fitz  # PyMuPDF
+            doc = fitz.open(temp_file.name)
+            num_pages = len(doc)
+            file_info += f" - {num_pages} Seiten"
             
-            except ImportError:
-                # Fallback to PyPDF2 if PyMuPDF not available
-                import PyPDF2
-                with open(temp_file.name, 'rb') as pdf_file:
-                    pdf_reader = PyPDF2.PdfReader(pdf_file)
-                    max_pages = min(15, len(pdf_reader.pages))
+            max_pages = min(15, num_pages)
+            for page_num in range(max_pages):
+                page = doc[page_num]
+                extracted_text += page.get_text() + "\n\n"
+            
+            print(f"[CHAT-PDF] Extracted {len(extracted_text)} chars via PyMuPDF")
+            
+            # ===========================================
+            # 🔍 VISION AI FOR FLOOR PLANS / SCANNED PDFs
+            # ===========================================
+            FORCE_VISION_AI = True  # Debug mode - always use Vision
+            
+            is_floor_plan = any(keyword in file.filename.lower() for keyword in 
+                ['grundriss', 'plan', 'layout', 'floor', 'kindergarten', 'kita', 'eg', 'og', 'ug', 'etage', 'geschoss'])
+            
+            words = extracted_text.split()
+            real_words = len([w for w in words if len(w) > 3 and w.isalpha()])
+            has_useful_text = real_words > 30
+            
+            should_try_vision = FORCE_VISION_AI or (not has_useful_text) or is_floor_plan
+            
+            print(f"[CHAT-PDF] === VISION AI DEBUG ===")
+            print(f"[CHAT-PDF] filename: {file.filename}")
+            print(f"[CHAT-PDF] FORCE_VISION_AI: {FORCE_VISION_AI}")
+            print(f"[CHAT-PDF] is_floor_plan: {is_floor_plan}")
+            print(f"[CHAT-PDF] real_words: {real_words}, has_useful_text: {has_useful_text}")
+            print(f"[CHAT-PDF] >>> SHOULD TRY VISION: {should_try_vision} <<<")
+            
+            if should_try_vision and num_pages > 0:
+                try:
+                    print(f"[CHAT-PDF] 🔍 STARTING Vision AI analysis...")
+                    import base64
+                    from openai import OpenAI
                     
-                    for page_num in range(max_pages):
-                        page = pdf_reader.pages[page_num]
-                        extracted_text += page.extract_text() + "\n\n"
+                    # Convert first page to image
+                    page = doc[0]
+                    pix = page.get_pixmap(dpi=150)
+                    img_bytes = pix.tobytes("png")
                     
-                    file_info += f" - {len(pdf_reader.pages)} Seiten"
-                    print(f"[PDF] Extracted {len(extracted_text)} chars via PyPDF2")
+                    # Encode to base64
+                    img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+                    print(f"[CHAT-PDF] Image base64 size: {len(img_base64)} chars")
+                    
+                    # Call GPT-4o Vision
+                    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                    vision_response = openai_client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": """Analysiere diesen Grundriss sehr detailliert!
+
+EXTRAHIERE:
+1. **ALLE Raumnamen** mit exakten Bezeichnungen (z.B. "Gruppenraum 1", "Küche", "WC", "Büro")
+2. **Raumgrößen** in m² (wenn angegeben)
+3. **Besondere Markierungen** (Türen, Fenster, Geräte-Symbole)
+4. **Technische Angaben** (Elektro-Symbole, Anschlüsse)
+
+FORMAT:
+📐 GRUNDRISS-ANALYSE:
+
+RÄUME:
+- [Raumname]: [Größe]m² - [Beschreibung]
+...
+
+GESAMT:
+- Anzahl Räume: X
+- Gesamtfläche: ca. X m²
+
+Wenn du keine Raumdaten erkennen kannst, beschreibe was du siehst."""
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/png;base64,{img_base64}"
+                                    }
+                                }
+                            ]
+                        }],
+                        max_tokens=2000
+                    )
+                    
+                    vision_analysis = vision_response.choices[0].message.content
+                    print(f"[CHAT-PDF] ✅ Vision AI SUCCESS! Response length: {len(vision_analysis)}")
+                    print(f"[CHAT-PDF] Vision response preview: {vision_analysis[:200]}...")
+                    
+                    # Use Vision analysis as extracted text
+                    extracted_text = f"🔍 **KI-BILDANALYSE (GPT-4o Vision):**\n\n{vision_analysis}"
+                    
+                except Exception as vision_error:
+                    print(f"[CHAT-PDF] ❌ Vision AI ERROR: {vision_error}")
+                    import traceback
+                    traceback.print_exc()
+            
+            doc.close()
+            
+        except ImportError:
+            # Fallback to PyPDF2 if PyMuPDF not available
+            print(f"[CHAT-PDF] PyMuPDF not available, using PyPDF2")
+            import PyPDF2
+            with open(temp_file.name, 'rb') as pdf_file:
+                pdf_reader = PyPDF2.PdfReader(pdf_file)
+                max_pages = min(15, len(pdf_reader.pages))
+                
+                for page_num in range(max_pages):
+                    page = pdf_reader.pages[page_num]
+                    extracted_text += page.extract_text() + "\n\n"
+                
+                file_info += f" - {len(pdf_reader.pages)} Seiten"
+                print(f"[CHAT-PDF] Extracted {len(extracted_text)} chars via PyPDF2")
                 
         except Exception as e:
             file_info += f"\n\n⚠️ PDF konnte nicht gelesen werden: {str(e)}"
-            print(f"[PDF] Error: {e}")
+            print(f"[CHAT-PDF] Error: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             os.unlink(temp_file.name)
     
