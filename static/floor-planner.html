@@ -686,6 +686,137 @@
             z-index: 51;
             display: none;
         }
+
+        /* Measure/Reference Tool */
+        .measure-dialog {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #16213e;
+            border: 2px solid #0099ff;
+            border-radius: 8px;
+            padding: 20px;
+            color: white;
+            z-index: 200;
+            min-width: 400px;
+            display: none;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .measure-dialog.visible {
+            display: block;
+        }
+
+        .measure-dialog h4 {
+            margin: 0 0 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .measure-dialog h4 i {
+            color: #0099ff;
+            font-size: 1.2rem;
+        }
+
+        .measure-dialog .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .measure-dialog .close-btn:hover {
+            color: white;
+        }
+
+        .measure-steps {
+            background: #0f0f23;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .measure-steps p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+
+        .measure-tips {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        .measure-tips strong {
+            color: #aaa;
+        }
+
+        .measure-tips ul {
+            margin: 5px 0 0 20px;
+            padding: 0;
+        }
+
+        .measure-input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .measure-input-row input {
+            flex: 1;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            text-align: right;
+        }
+
+        .measure-input-row input:focus {
+            outline: none;
+            border-color: #0099ff;
+        }
+
+        .measure-input-row span {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .measure-input-row button {
+            background: #4caf50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .measure-input-row button:hover {
+            background: #45a049;
+        }
+
+        .measure-line-info {
+            background: rgba(0, 153, 255, 0.1);
+            border: 1px solid #0099ff;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .measure-line-info span {
+            color: #0099ff;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -731,8 +862,11 @@
             <button class="tool-btn" data-tool="text" title="Text (T)">
                 <i class="bi bi-fonts"></i>
             </button>
-            <button class="tool-btn" data-tool="measure" title="Messen (M)">
+            <button class="tool-btn" data-tool="measure" title="Maßstab definieren (M)">
                 <i class="bi bi-rulers"></i>
+            </button>
+            <button class="tool-btn" onclick="showReferenceDialog()" title="Referenzstrecke definieren">
+                <i class="bi bi-arrow-left-right"></i>
             </button>
             <div class="tool-divider"></div>
             <button class="tool-btn" onclick="uploadFloorPlan()" title="Grundriss hochladen">
@@ -845,6 +979,33 @@
             <div class="ruler-corner" id="rulerCorner"></div>
             <canvas class="ruler-h" id="rulerH" height="25"></canvas>
             <canvas class="ruler-v" id="rulerV" width="25"></canvas>
+            
+            <!-- Measure/Reference Dialog -->
+            <div class="measure-dialog" id="measureDialog">
+                <button class="close-btn" onclick="closeMeasureDialog()">&times;</button>
+                <h4><i class="bi bi-info-circle-fill"></i> Referenzstrecke definieren</h4>
+                <div class="measure-steps">
+                    <p>1. Bitte zunächst eine Referenzstrecke aufziehen.</p>
+                    <p>2. Die Länge eingeben und speichern.</p>
+                </div>
+                <div class="measure-line-info" id="measureLineInfo" style="display: none;">
+                    Gezeichnete Strecke: <span id="measurePixelLength">0</span> Pixel
+                </div>
+                <div class="measure-tips">
+                    <strong>Tipps:</strong>
+                    <ul>
+                        <li>Nutze eine möglichst große bekannte Strecke.</li>
+                        <li>Zoome rein, um die Referenzpunkte präziser zu setzen.</li>
+                    </ul>
+                </div>
+                <div class="measure-input-row">
+                    <input type="number" id="measureRealLength" placeholder="Echte Länge" step="0.01" min="0.01">
+                    <span>m</span>
+                    <button onclick="saveReferenceScale()">
+                        <i class="bi bi-check-lg me-1"></i>Speichern
+                    </button>
+                </div>
+            </div>
         </div>
         
         <!-- Right Sidebar - Elements -->
@@ -1277,7 +1438,11 @@
             gridEnabled: true,
             snapToGrid: true,
             gridSize: 50,  // pixels
-            gridScale: 100  // 1:100 scale
+            gridScale: 100,  // 1:100 scale
+            // Measure/Reference settings
+            pixelsPerMeter: 100,  // Default: 100 pixels = 1 meter
+            measureLine: null,  // {start: {x, y}, end: {x, y}}
+            isMeasuring: false
         };
         
         // Element type to Lexware mapping
@@ -1858,6 +2023,11 @@
                 ctx.setLineDash([]);
             }
             
+            // Draw measure line
+            if (state.measureLine) {
+                drawMeasureLine();
+            }
+            
             ctx.restore();
             
             // Draw rulers
@@ -2048,6 +2218,13 @@
                 state.isDrawing = true;
                 state.drawStart = coords;
                 state.drawCurrent = coords;
+            } else if (state.currentTool === 'measure') {
+                // Start measuring/reference line
+                state.isMeasuring = true;
+                state.measureLine = {
+                    start: { x: coords.x, y: coords.y },
+                    end: { x: coords.x, y: coords.y }
+                };
             }
         }
         
@@ -2079,6 +2256,10 @@
             } else if (state.isDrawing) {
                 state.drawCurrent = coords;
                 render();
+            } else if (state.isMeasuring && state.measureLine) {
+                state.measureLine.end = { x: coords.x, y: coords.y };
+                render();
+                updateMeasureInfo();
             }
         }
         
@@ -2103,6 +2284,20 @@
                         });
                     }
                 }
+            }
+            
+            // Finish measuring
+            if (state.isMeasuring && state.measureLine) {
+                const length = getMeasureLineLength();
+                if (length > 20) {
+                    // Show dialog to enter real length
+                    showMeasureDialog();
+                } else {
+                    // Line too short, cancel
+                    state.measureLine = null;
+                    showToast('Linie zu kurz. Bitte längere Strecke zeichnen.', 'warning');
+                }
+                state.isMeasuring = false;
             }
             
             state.isDragging = false;
@@ -2317,6 +2512,129 @@
             updateElementList();
             render();
             showToast('Element gelöscht', 'success');
+        }
+        
+        // =============================================
+        // MEASURE / REFERENCE SCALE
+        // =============================================
+        function getMeasureLineLength() {
+            if (!state.measureLine) return 0;
+            const dx = state.measureLine.end.x - state.measureLine.start.x;
+            const dy = state.measureLine.end.y - state.measureLine.start.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        function updateMeasureInfo() {
+            const length = getMeasureLineLength();
+            const lineInfo = document.getElementById('measureLineInfo');
+            const pixelLength = document.getElementById('measurePixelLength');
+            
+            if (length > 5) {
+                lineInfo.style.display = 'block';
+                pixelLength.textContent = Math.round(length);
+            }
+        }
+        
+        function showReferenceDialog() {
+            // Activate measure tool
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.tool-btn[data-tool="measure"]')?.classList.add('active');
+            state.currentTool = 'measure';
+            updateCursor();
+            
+            // Show dialog
+            document.getElementById('measureDialog').classList.add('visible');
+            document.getElementById('measureLineInfo').style.display = 'none';
+            document.getElementById('measureRealLength').value = '';
+            state.measureLine = null;
+            
+            showToast('Ziehen Sie eine Referenzstrecke auf dem Grundriss', 'info');
+        }
+        
+        function showMeasureDialog() {
+            document.getElementById('measureDialog').classList.add('visible');
+            updateMeasureInfo();
+            document.getElementById('measureRealLength').focus();
+        }
+        
+        function closeMeasureDialog() {
+            document.getElementById('measureDialog').classList.remove('visible');
+            state.measureLine = null;
+            state.isMeasuring = false;
+            
+            // Switch back to select tool
+            selectTool('select');
+            render();
+        }
+        
+        function saveReferenceScale() {
+            const realLength = parseFloat(document.getElementById('measureRealLength').value);
+            const pixelLength = getMeasureLineLength();
+            
+            if (!realLength || realLength <= 0) {
+                showToast('Bitte geben Sie eine gültige Länge ein', 'warning');
+                return;
+            }
+            
+            if (pixelLength < 20) {
+                showToast('Bitte zeichnen Sie erst eine Referenzstrecke', 'warning');
+                return;
+            }
+            
+            // Calculate pixels per meter
+            state.pixelsPerMeter = pixelLength / realLength;
+            
+            // Update grid size to match 0.5m (50cm)
+            state.gridSize = state.pixelsPerMeter * 0.5;
+            document.getElementById('gridSize').value = Math.round(state.gridSize);
+            
+            showToast(`Maßstab gespeichert: ${Math.round(state.pixelsPerMeter)} Pixel = 1 Meter`, 'success');
+            
+            closeMeasureDialog();
+        }
+        
+        function drawMeasureLine() {
+            if (!state.measureLine) return;
+            
+            const { start, end } = state.measureLine;
+            const length = getMeasureLineLength();
+            
+            // Draw line
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.strokeStyle = '#0099ff';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw endpoints
+            [start, end].forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#0099ff';
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+            
+            // Draw length label
+            const midX = (start.x + end.x) / 2;
+            const midY = (start.y + end.y) / 2;
+            const lengthInMeters = length / state.pixelsPerMeter;
+            
+            ctx.fillStyle = 'rgba(0, 153, 255, 0.9)';
+            ctx.beginPath();
+            ctx.roundRect(midX - 35, midY - 12, 70, 24, 4);
+            ctx.fill();
+            
+            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${lengthInMeters.toFixed(2)} m`, midX, midY);
         }
         
         // =============================================
