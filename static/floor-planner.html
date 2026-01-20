@@ -820,6 +820,35 @@
             color: #0099ff;
             font-weight: bold;
         }
+        
+        /* Floor Tabs */
+        .floor-tab {
+            background: #3a3a3a;
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .floor-tab:hover {
+            background: #444;
+            border-color: #666;
+        }
+        .floor-tab.active {
+            background: #e91e63;
+            color: white;
+            border-color: #e91e63;
+        }
+        .floor-tab .floor-close {
+            margin-left: 6px;
+            opacity: 0.6;
+            font-size: 10px;
+        }
+        .floor-tab .floor-close:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -849,6 +878,15 @@
         </div>
     </header>
     
+    <!-- Floor Tabs -->
+    <div class="floor-tabs-bar" id="floorTabsBar" style="background:#2a2a2a;padding:4px 10px;border-bottom:1px solid #444;display:flex;gap:8px;align-items:center;">
+        <span style="color:#888;font-size:12px;margin-right:10px;">Etagen:</span>
+        <div id="floorTabs" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+        <button onclick="addNewFloor()" style="background:#444;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:8px;" title="Neue Etage hinzufügen">
+            <i class="bi bi-plus"></i> Etage
+        </button>
+    </div>
+    
     <div class="app-container">
         <!-- Left Toolbar -->
         <div class="left-toolbar">
@@ -877,6 +915,13 @@
             </button>
             <button class="tool-btn" onclick="showReferenceDialog()" title="Referenzstrecke definieren">
                 <i class="bi bi-arrow-left-right"></i>
+            </button>
+            <div class="tool-divider"></div>
+            <button class="tool-btn" onclick="undo()" title="Rückgängig (Strg+Z)">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+            <button class="tool-btn" onclick="redo()" title="Wiederherstellen (Strg+Y)">
+                <i class="bi bi-arrow-clockwise"></i>
             </button>
             <div class="tool-divider"></div>
             <button class="tool-btn" onclick="uploadFloorPlan()" title="Grundriss hochladen">
@@ -1263,6 +1308,23 @@
                 </div>
             </div>
             
+            <!-- Räume -->
+            <div class="element-category">
+                <div class="category-header" onclick="toggleCategory(this)">
+                    RÄUME <span id="roomCount">0</span>
+                </div>
+                <div class="element-grid" id="roomList" style="display:block;padding:8px;">
+                    <div id="roomListContent" style="font-size:12px;color:#888;">
+                        Keine Räume definiert.<br>
+                        Zeichne mit dem Raum-Tool (R).
+                    </div>
+                    <div id="totalAreaDisplay" style="margin-top:10px;padding:8px;background:#333;border-radius:4px;display:none;">
+                        <strong style="color:#ffc107;">Gesamtfläche:</strong>
+                        <span id="totalAreaValue" style="color:white;float:right;">0.00 m²</span>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Sonstiges -->
             <div class="element-category">
                 <div class="category-header" onclick="toggleCategory(this)">
@@ -1471,10 +1533,17 @@
             floorPlanImage: null,
             elements: [],
             rooms: [],
+            texts: [],      // Text annotations
+            lines: [],      // Connection lines
             selectedElement: null,
+            selectedText: null,
+            selectedLine: null,
             isDragging: false,
             isDrawing: false,
+            isDrawingLine: false,  // Line tool drawing state
             drawStart: null,
+            lineStart: null,       // Line tool start point
+            lineCurrent: null,     // Line tool current point
             elementCounts: {},
             // Project tracking
             currentProjectId: null,
@@ -1489,7 +1558,15 @@
             // Measure/Reference settings
             pixelsPerMeter: 100,  // Default: 100 pixels = 1 meter
             measureLine: null,  // {start: {x, y}, end: {x, y}}
-            isMeasuring: false
+            isMeasuring: false,
+            // Multi-Floor Support
+            floors: [
+                { id: 'EG', name: 'Erdgeschoss', image: null, elements: [], rooms: [], texts: [], lines: [] }
+            ],
+            currentFloor: 'EG',
+            // Undo/Redo
+            history: [],
+            historyIndex: -1
         };
         
         // Element type to Lexware mapping with default mounting heights (in cm)
@@ -1946,6 +2023,7 @@
             initUpload();
             initTabs();
             initShareModal();
+            initFloorTabs();
             loadCustomers();
             
             // Check if project ID in URL
@@ -2020,8 +2098,14 @@
                     case 'v': selectTool('select'); break;
                     case 'h': selectTool('pan'); break;
                     case 'r': selectTool('room'); break;
+                    case 'p': selectTool('polygon'); break;
+                    case 'l': selectTool('line'); break;
+                    case 't': selectTool('text'); break;
+                    case 'm': selectTool('measure'); break;
                     case 'delete': deleteElement(); break;
                     case 'escape': deselectAll(); break;
+                    case 'z': if (e.ctrlKey) undo(); break;
+                    case 'y': if (e.ctrlKey) redo(); break;
                 }
             });
         }
@@ -2092,6 +2176,8 @@
         function addElement(type, x, y, room = 'Unzugeordnet') {
             const config = ELEMENT_CONFIG[type];
             if (!config) return;
+            
+            saveHistory();
             
             // Generate unique ID
             const prefix = config.prefix;
@@ -2165,6 +2251,42 @@
             
             // Update element count
             document.getElementById('elementCount').textContent = state.elements.length + ' Elemente';
+            
+            // Update room list
+            updateRoomList();
+        }
+        
+        function updateRoomList() {
+            const roomListContent = document.getElementById('roomListContent');
+            const roomCount = document.getElementById('roomCount');
+            const totalAreaDisplay = document.getElementById('totalAreaDisplay');
+            const totalAreaValue = document.getElementById('totalAreaValue');
+            
+            if (state.rooms.length === 0) {
+                roomListContent.innerHTML = '<span style="color:#888;">Keine Räume definiert.<br>Zeichne mit dem Raum-Tool (R).</span>';
+                roomCount.textContent = '0';
+                totalAreaDisplay.style.display = 'none';
+                return;
+            }
+            
+            let totalArea = 0;
+            roomListContent.innerHTML = state.rooms.map(room => {
+                const widthM = room.width / state.pixelsPerMeter;
+                const heightM = room.height / state.pixelsPerMeter;
+                const areaM2 = widthM * heightM;
+                totalArea += areaM2;
+                
+                return `
+                    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #333;">
+                        <span style="color:${room.color};">● ${room.name}</span>
+                        <span style="color:#ffc107;">${areaM2.toFixed(2)} m²</span>
+                    </div>
+                `;
+            }).join('');
+            
+            roomCount.textContent = state.rooms.length;
+            totalAreaDisplay.style.display = 'block';
+            totalAreaValue.textContent = totalArea.toFixed(2) + ' m²';
         }
         
         function getElementSymbolHTML(type) {
@@ -2234,10 +2356,29 @@
                 ctx.fillRect(room.x, room.y, room.width, room.height);
                 ctx.strokeRect(room.x, room.y, room.width, room.height);
                 
-                // Room label
+                // Calculate m² (convert pixels to meters using pixelsPerMeter)
+                const widthM = room.width / state.pixelsPerMeter;
+                const heightM = room.height / state.pixelsPerMeter;
+                const areaM2 = widthM * heightM;
+                
+                // Room label with area
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                const labelText = room.name;
+                const areaText = `${areaM2.toFixed(2)} m²`;
+                ctx.font = 'bold 14px Arial';
+                const labelWidth = Math.max(ctx.measureText(labelText).width, ctx.measureText(areaText).width) + 10;
+                ctx.beginPath();
+                ctx.roundRect(room.x + 5, room.y + 5, labelWidth, 40, 4);
+                ctx.fill();
+                
                 ctx.fillStyle = 'white';
-                ctx.font = '14px Arial';
-                ctx.fillText(room.name, room.x + 5, room.y + 20);
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText(labelText, room.x + 10, room.y + 10);
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#ffc107';
+                ctx.fillText(areaText, room.x + 10, room.y + 27);
             });
             
             // Draw elements with professional symbols (JetPlan style)
@@ -2272,6 +2413,28 @@
                 );
                 ctx.setLineDash([]);
             }
+            
+            // Draw connection lines
+            state.lines.forEach(line => {
+                drawConnectionLine(line, state.selectedLine?.id === line.id);
+            });
+            
+            // Draw line being created
+            if (state.isDrawing && state.drawStart && state.currentTool === 'line') {
+                ctx.beginPath();
+                ctx.moveTo(state.drawStart.x, state.drawStart.y);
+                ctx.lineTo(state.drawCurrent.x, state.drawCurrent.y);
+                ctx.strokeStyle = '#00bcd4';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // Draw text annotations
+            state.texts.forEach(text => {
+                drawTextAnnotation(text, state.selectedText?.id === text.id);
+            });
             
             // Draw measure line
             if (state.measureLine) {
@@ -2472,6 +2635,26 @@
                     start: { x: coords.x, y: coords.y },
                     end: { x: coords.x, y: coords.y }
                 };
+            } else if (state.currentTool === 'text') {
+                // Text tool - place text annotation
+                const textContent = prompt('Text eingeben:', '');
+                if (textContent && textContent.trim()) {
+                    saveHistory();
+                    state.texts.push({
+                        id: Date.now(),
+                        x: coords.x,
+                        y: coords.y,
+                        content: textContent.trim(),
+                        fontSize: 14
+                    });
+                    showToast('Text hinzugefügt', 'success');
+                    render();
+                }
+            } else if (state.currentTool === 'line') {
+                // Line tool - start drawing connection line
+                state.isDrawingLine = true;
+                state.lineStart = { x: coords.x, y: coords.y };
+                state.lineCurrent = { x: coords.x, y: coords.y };
             }
         }
         
@@ -2507,6 +2690,9 @@
                 state.measureLine.end = { x: coords.x, y: coords.y };
                 render();
                 updateMeasureInfo();
+            } else if (state.isDrawingLine && state.lineStart) {
+                state.lineCurrent = { x: coords.x, y: coords.y };
+                render();
             }
         }
         
@@ -2520,6 +2706,7 @@
                     // Create room
                     const roomName = prompt('Raumname:', 'Raum ' + (state.rooms.length + 1));
                     if (roomName) {
+                        saveHistory();
                         state.rooms.push({
                             id: Date.now(),
                             name: roomName,
@@ -2529,6 +2716,7 @@
                             height: Math.abs(height),
                             color: '#ffeb3b'
                         });
+                        updateRoomList();
                     }
                 }
             }
@@ -2545,6 +2733,39 @@
                     showToast('Linie zu kurz. Bitte längere Strecke zeichnen.', 'warning');
                 }
                 state.isMeasuring = false;
+            }
+            
+            // Finish drawing connection line
+            if (state.isDrawingLine && state.lineStart && state.lineCurrent) {
+                const coords = getCanvasCoords(e);
+                const length = Math.sqrt(
+                    Math.pow(coords.x - state.lineStart.x, 2) + 
+                    Math.pow(coords.y - state.lineStart.y, 2)
+                );
+                
+                if (length > 15) {
+                    // Line is long enough
+                    const label = prompt('Beschriftung (optional):', '');
+                    saveHistory();
+                    state.lines.push({
+                        id: Date.now(),
+                        startX: state.lineStart.x,
+                        startY: state.lineStart.y,
+                        endX: coords.x,
+                        endY: coords.y,
+                        style: 'solid',
+                        color: '#ff9800',
+                        width: 2,
+                        label: label || null
+                    });
+                    showToast('Linie hinzugefügt', 'success');
+                } else {
+                    showToast('Linie zu kurz', 'warning');
+                }
+                
+                state.isDrawingLine = false;
+                state.lineStart = null;
+                state.lineCurrent = null;
             }
             
             state.isDragging = false;
@@ -2849,6 +3070,105 @@
             showToast(`Maßstab gespeichert: ${Math.round(state.pixelsPerMeter)} Pixel = 1 Meter`, 'success');
             
             closeMeasureDialog();
+        }
+        
+        // =============================================
+        // TEXT ANNOTATION DRAWING
+        // =============================================
+        function drawTextAnnotation(text, isSelected) {
+            const x = text.x;
+            const y = text.y;
+            const content = text.content || 'Text';
+            const fontSize = text.fontSize || 14;
+            
+            ctx.save();
+            ctx.font = `${fontSize}px Arial`;
+            const textWidth = ctx.measureText(content).width;
+            const padding = 6;
+            const boxWidth = textWidth + padding * 2;
+            const boxHeight = fontSize + padding * 2;
+            
+            // Background box
+            ctx.fillStyle = isSelected ? 'rgba(233, 30, 99, 0.9)' : 'rgba(33, 150, 243, 0.85)';
+            ctx.beginPath();
+            ctx.roundRect(x - boxWidth/2, y - boxHeight/2, boxWidth, boxHeight, 4);
+            ctx.fill();
+            
+            // Border
+            if (isSelected) {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            
+            // Text
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(content, x, y);
+            
+            ctx.restore();
+        }
+        
+        // =============================================
+        // CONNECTION LINE DRAWING
+        // =============================================
+        function drawConnectionLine(line, isSelected) {
+            const startX = line.startX;
+            const startY = line.startY;
+            const endX = line.endX;
+            const endY = line.endY;
+            const lineStyle = line.style || 'solid'; // solid, dashed, dotted
+            const lineColor = line.color || '#ff9800';
+            const lineWidth = line.width || 2;
+            
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = isSelected ? '#e91e63' : lineColor;
+            ctx.lineWidth = isSelected ? lineWidth + 1 : lineWidth;
+            
+            // Line style
+            if (lineStyle === 'dashed') {
+                ctx.setLineDash([10, 5]);
+            } else if (lineStyle === 'dotted') {
+                ctx.setLineDash([3, 3]);
+            }
+            
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw endpoints
+            [{ x: startX, y: startY }, { x: endX, y: endY }].forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, isSelected ? 5 : 4, 0, Math.PI * 2);
+                ctx.fillStyle = isSelected ? '#e91e63' : lineColor;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+            
+            // Draw label if exists
+            if (line.label) {
+                const midX = (startX + endX) / 2;
+                const midY = (startY + endY) / 2;
+                ctx.font = '11px Arial';
+                const labelWidth = ctx.measureText(line.label).width + 8;
+                
+                ctx.fillStyle = 'rgba(255, 152, 0, 0.9)';
+                ctx.beginPath();
+                ctx.roundRect(midX - labelWidth/2, midY - 9, labelWidth, 18, 3);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(line.label, midX, midY);
+            }
+            
+            ctx.restore();
         }
         
         function drawMeasureLine() {
@@ -3251,6 +3571,154 @@
             });
         }
         
+        // =============================================
+        // MULTI-FLOOR SUPPORT
+        // =============================================
+        function initFloorTabs() {
+            renderFloorTabs();
+        }
+        
+        function renderFloorTabs() {
+            const container = document.getElementById('floorTabs');
+            container.innerHTML = state.floors.map(floor => `
+                <button class="floor-tab ${floor.id === state.currentFloor ? 'active' : ''}" onclick="switchFloor('${floor.id}')">
+                    ${floor.name}
+                    ${state.floors.length > 1 ? `<span class="floor-close" onclick="event.stopPropagation(); removeFloor('${floor.id}')" title="Etage entfernen">×</span>` : ''}
+                </button>
+            `).join('');
+        }
+        
+        function switchFloor(floorId) {
+            // Save current floor data
+            saveCurrentFloorData();
+            
+            // Switch to new floor
+            state.currentFloor = floorId;
+            loadFloorData(floorId);
+            
+            renderFloorTabs();
+            render();
+            updateElementList();
+            updateRoomList();
+            showToast(`Etage gewechselt: ${getFloorName(floorId)}`, 'info');
+        }
+        
+        function saveCurrentFloorData() {
+            const floor = state.floors.find(f => f.id === state.currentFloor);
+            if (floor) {
+                floor.image = state.floorPlanImage;
+                floor.elements = JSON.parse(JSON.stringify(state.elements));
+                floor.rooms = JSON.parse(JSON.stringify(state.rooms));
+                floor.texts = JSON.parse(JSON.stringify(state.texts));
+                floor.lines = JSON.parse(JSON.stringify(state.lines));
+            }
+        }
+        
+        function loadFloorData(floorId) {
+            const floor = state.floors.find(f => f.id === floorId);
+            if (floor) {
+                state.floorPlanImage = floor.image;
+                state.elements = floor.elements ? JSON.parse(JSON.stringify(floor.elements)) : [];
+                state.rooms = floor.rooms ? JSON.parse(JSON.stringify(floor.rooms)) : [];
+                state.texts = floor.texts ? JSON.parse(JSON.stringify(floor.texts)) : [];
+                state.lines = floor.lines ? JSON.parse(JSON.stringify(floor.lines)) : [];
+                state.selectedElement = null;
+            }
+        }
+        
+        function getFloorName(floorId) {
+            const floor = state.floors.find(f => f.id === floorId);
+            return floor ? floor.name : floorId;
+        }
+        
+        function addNewFloor() {
+            const floorTypes = [
+                { id: 'UG2', name: '2. Untergeschoss' },
+                { id: 'UG', name: 'Untergeschoss' },
+                { id: 'EG', name: 'Erdgeschoss' },
+                { id: 'OG', name: 'Obergeschoss' },
+                { id: 'OG2', name: '2. Obergeschoss' },
+                { id: 'DG', name: 'Dachgeschoss' }
+            ];
+            
+            // Find available floor types
+            const existingIds = state.floors.map(f => f.id);
+            const available = floorTypes.filter(f => !existingIds.includes(f.id));
+            
+            if (available.length === 0) {
+                const customName = prompt('Name der neuen Etage:');
+                if (customName && customName.trim()) {
+                    const newId = 'F' + Date.now();
+                    state.floors.push({
+                        id: newId,
+                        name: customName.trim(),
+                        image: null,
+                        elements: [],
+                        rooms: [],
+                        texts: [],
+                        lines: []
+                    });
+                    switchFloor(newId);
+                }
+                return;
+            }
+            
+            // Show selection
+            const choice = prompt('Neue Etage wählen:\n' + available.map((f, i) => `${i + 1}. ${f.name}`).join('\n') + '\n\n(Nummer eingeben)');
+            if (choice) {
+                const idx = parseInt(choice) - 1;
+                if (idx >= 0 && idx < available.length) {
+                    const selected = available[idx];
+                    state.floors.push({
+                        id: selected.id,
+                        name: selected.name,
+                        image: null,
+                        elements: [],
+                        rooms: [],
+                        texts: [],
+                        lines: []
+                    });
+                    
+                    // Sort floors logically
+                    const order = ['UG2', 'UG', 'EG', 'OG', 'OG2', 'DG'];
+                    state.floors.sort((a, b) => {
+                        const aIdx = order.indexOf(a.id);
+                        const bIdx = order.indexOf(b.id);
+                        if (aIdx === -1 && bIdx === -1) return 0;
+                        if (aIdx === -1) return 1;
+                        if (bIdx === -1) return -1;
+                        return aIdx - bIdx;
+                    });
+                    
+                    switchFloor(selected.id);
+                    showToast(`${selected.name} hinzugefügt`, 'success');
+                }
+            }
+        }
+        
+        function removeFloor(floorId) {
+            if (state.floors.length <= 1) {
+                showToast('Mindestens eine Etage muss existieren', 'warning');
+                return;
+            }
+            
+            const floor = state.floors.find(f => f.id === floorId);
+            if (!confirm(`${floor.name} wirklich löschen? Alle Elemente dieser Etage gehen verloren!`)) {
+                return;
+            }
+            
+            state.floors = state.floors.filter(f => f.id !== floorId);
+            
+            // If current floor was deleted, switch to first available
+            if (state.currentFloor === floorId) {
+                switchFloor(state.floors[0].id);
+            } else {
+                renderFloorTabs();
+            }
+            
+            showToast(`${floor.name} gelöscht`, 'info');
+        }
+        
         async function showShareModal() {
             if (!state.currentProjectId) {
                 // Save project first
@@ -3336,12 +3804,76 @@
         // =============================================
         function deleteElement() {
             if (state.selectedElement) {
+                saveHistory();
                 state.elements = state.elements.filter(el => el.id !== state.selectedElement.id);
                 state.selectedElement = null;
                 hideContextMenu();
                 render();
                 updateElementList();
                 updateElementCount();
+            }
+        }
+        
+        // =============================================
+        // UNDO / REDO
+        // =============================================
+        function saveHistory() {
+            // Remove any redo history
+            if (state.historyIndex < state.history.length - 1) {
+                state.history = state.history.slice(0, state.historyIndex + 1);
+            }
+            
+            // Save current state
+            const snapshot = {
+                elements: JSON.parse(JSON.stringify(state.elements)),
+                rooms: JSON.parse(JSON.stringify(state.rooms)),
+                texts: JSON.parse(JSON.stringify(state.texts)),
+                lines: JSON.parse(JSON.stringify(state.lines))
+            };
+            
+            state.history.push(snapshot);
+            state.historyIndex = state.history.length - 1;
+            
+            // Limit history to 50 entries
+            if (state.history.length > 50) {
+                state.history.shift();
+                state.historyIndex--;
+            }
+        }
+        
+        function undo() {
+            if (state.historyIndex > 0) {
+                state.historyIndex--;
+                const snapshot = state.history[state.historyIndex];
+                state.elements = JSON.parse(JSON.stringify(snapshot.elements));
+                state.rooms = JSON.parse(JSON.stringify(snapshot.rooms));
+                state.texts = JSON.parse(JSON.stringify(snapshot.texts));
+                state.lines = JSON.parse(JSON.stringify(snapshot.lines));
+                state.selectedElement = null;
+                render();
+                updateElementList();
+                updateElementCount();
+                showToast('Rückgängig', 'info');
+            } else {
+                showToast('Nichts zum Rückgängig machen', 'warning');
+            }
+        }
+        
+        function redo() {
+            if (state.historyIndex < state.history.length - 1) {
+                state.historyIndex++;
+                const snapshot = state.history[state.historyIndex];
+                state.elements = JSON.parse(JSON.stringify(snapshot.elements));
+                state.rooms = JSON.parse(JSON.stringify(snapshot.rooms));
+                state.texts = JSON.parse(JSON.stringify(snapshot.texts));
+                state.lines = JSON.parse(JSON.stringify(snapshot.lines));
+                state.selectedElement = null;
+                render();
+                updateElementList();
+                updateElementCount();
+                showToast('Wiederherstellen', 'info');
+            } else {
+                showToast('Nichts zum Wiederherstellen', 'warning');
             }
         }
         
@@ -3376,62 +3908,63 @@
         // =============================================
         async function saveProject() {
             const projectName = document.getElementById('projectName').textContent;
-            const floorName = document.getElementById('floorSelect')?.value || 'EG';
             
-            // Get floor plan as base64
-            let floorPlanData = null;
-            let floorPlanType = null;
-            if (state.floorPlanImage) {
-                // Create temp canvas to export floor plan
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = state.floorPlanImage.width;
-                tempCanvas.height = state.floorPlanImage.height;
-                const tempCtx = tempCanvas.getContext('2d');
-                tempCtx.drawImage(state.floorPlanImage, 0, 0);
-                floorPlanData = tempCanvas.toDataURL('image/png');
-                floorPlanType = 'image/png';
-            }
+            // Save current floor data first
+            saveCurrentFloorData();
             
-            // Prepare rooms data
-            const roomsData = state.rooms.map(room => ({
-                floor_id: 0, // Will be set by backend
-                name: room.name,
-                color: room.color,
-                category: room.category || 'bestand',
-                x: room.x,
-                y: room.y,
-                width: room.width,
-                height: room.height
-            }));
-            
-            // Prepare elements data
-            const elementsData = state.elements.map(el => ({
-                floor_id: 0, // Will be set by backend
-                element_type: el.type,
-                code: el.code || generateCode(el.type),
-                x: el.x,
-                y: el.y,
-                rotation: el.rotation || 0,
-                height: el.height || null,
-                notes: el.notes || null
-            }));
+            // Prepare all floors data
+            const floorsData = state.floors.map(floor => {
+                // Get floor plan as base64
+                let floorPlanData = null;
+                let floorPlanType = null;
+                if (floor.image) {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = floor.image.width;
+                    tempCanvas.height = floor.image.height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(floor.image, 0, 0);
+                    floorPlanData = tempCanvas.toDataURL('image/png');
+                    floorPlanType = 'image/png';
+                }
+                
+                return {
+                    floor_id: floor.id,
+                    name: floor.name,
+                    floor_plan_data: floorPlanData,
+                    floor_plan_type: floorPlanType,
+                    scale_pixels_per_meter: state.pixelsPerMeter,
+                    rooms: (floor.rooms || []).map(room => ({
+                        name: room.name,
+                        color: room.color,
+                        category: room.category || 'bestand',
+                        x: room.x,
+                        y: room.y,
+                        width: room.width,
+                        height: room.height
+                    })),
+                    elements: (floor.elements || []).map(el => ({
+                        element_type: el.type,
+                        code: el.code || generateCode(el.type),
+                        x: el.x,
+                        y: el.y,
+                        rotation: el.rotation || 0,
+                        height: el.height || null,
+                        notes: el.notes || null
+                    })),
+                    texts: floor.texts || [],
+                    lines: floor.lines || []
+                };
+            });
             
             const projectData = {
                 project: {
                     name: projectName,
-                    customer_id: null,
+                    customer_id: state.selectedCustomerId || null,
                     address: null,
                     notes: null
                 },
-                floor: {
-                    project_id: 0, // Will be set by backend
-                    name: floorName,
-                    floor_plan_data: floorPlanData,
-                    floor_plan_type: floorPlanType,
-                    scale_pixels_per_meter: state.pixelsPerMeter
-                },
-                rooms: roomsData,
-                elements: elementsData
+                floors: floorsData,
+                currentFloor: state.currentFloor
             };
             
             try {
@@ -3456,7 +3989,6 @@
                 
                 const result = await response.json();
                 state.currentProjectId = result.project.id;
-                state.currentFloorId = result.floor.id;
                 
                 showToast(`Projekt "${projectName}" gespeichert! (ID: ${result.project.id})`, 'success');
             } catch (error) {
@@ -3474,31 +4006,74 @@
                 
                 // Set project info
                 state.currentProjectId = data.project.id;
-                state.currentFloorId = data.floor.id;
                 document.getElementById('projectName').textContent = data.project.name;
                 
-                // Load floor plan image
-                if (data.floor.floor_plan_data) {
-                    const img = new Image();
-                    img.onload = () => {
-                        state.floorPlanImage = img;
-                        state.pixelsPerMeter = data.floor.scale_pixels_per_meter || 50;
-                        showCanvas();
+                // Check if multi-floor data exists
+                if (data.floors && data.floors.length > 0) {
+                    // New multi-floor format
+                    state.floors = [];
+                    
+                    for (const floorData of data.floors) {
+                        const floor = {
+                            id: floorData.floor_id || floorData.id || 'EG',
+                            name: floorData.name || floorData.floor_id,
+                            image: null,
+                            elements: (floorData.elements || []).map(el => {
+                                const config = ELEMENT_CONFIG[el.element_type] || {};
+                                return {
+                                    id: el.id || Date.now() + Math.random(),
+                                    type: el.element_type,
+                                    name: config.name || el.element_type,
+                                    code: el.code,
+                                    x: el.x,
+                                    y: el.y,
+                                    rotation: el.rotation || 0,
+                                    height: el.height,
+                                    notes: el.notes,
+                                    price: config.price || 0
+                                };
+                            }),
+                            rooms: (floorData.rooms || []).map(room => ({
+                                id: room.id || Date.now() + Math.random(),
+                                name: room.name,
+                                color: room.color,
+                                category: room.category,
+                                x: room.x,
+                                y: room.y,
+                                width: room.width,
+                                height: room.height
+                            })),
+                            texts: floorData.texts || [],
+                            lines: floorData.lines || []
+                        };
                         
-                        // Load rooms
-                        state.rooms = data.rooms.map(room => ({
-                            id: room.id,
-                            name: room.name,
-                            color: room.color,
-                            category: room.category,
-                            x: room.x,
-                            y: room.y,
-                            width: room.width,
-                            height: room.height
-                        }));
+                        // Load floor plan image
+                        if (floorData.floor_plan_data) {
+                            const img = new Image();
+                            await new Promise(resolve => {
+                                img.onload = () => {
+                                    floor.image = img;
+                                    resolve();
+                                };
+                                img.onerror = resolve;
+                                img.src = floorData.floor_plan_data;
+                            });
+                        }
                         
-                        // Load elements with proper config
-                        state.elements = data.elements.map(el => {
+                        state.floors.push(floor);
+                    }
+                    
+                    state.pixelsPerMeter = data.floors[0].scale_pixels_per_meter || 100;
+                    state.currentFloor = data.currentFloor || state.floors[0].id;
+                    loadFloorData(state.currentFloor);
+                    
+                } else if (data.floor) {
+                    // Legacy single floor format
+                    state.floors = [{
+                        id: 'EG',
+                        name: data.floor.name || 'Erdgeschoss',
+                        image: null,
+                        elements: (data.elements || []).map(el => {
                             const config = ELEMENT_CONFIG[el.element_type] || {};
                             return {
                                 id: el.id,
@@ -3512,16 +4087,47 @@
                                 notes: el.notes,
                                 price: config.price || 0
                             };
+                        }),
+                        rooms: (data.rooms || []).map(room => ({
+                            id: room.id,
+                            name: room.name,
+                            color: room.color,
+                            category: room.category,
+                            x: room.x,
+                            y: room.y,
+                            width: room.width,
+                            height: room.height
+                        })),
+                        texts: [],
+                        lines: []
+                    }];
+                    
+                    state.pixelsPerMeter = data.floor.scale_pixels_per_meter || 100;
+                    
+                    // Load floor plan image
+                    if (data.floor.floor_plan_data) {
+                        const img = new Image();
+                        await new Promise(resolve => {
+                            img.onload = () => {
+                                state.floors[0].image = img;
+                                resolve();
+                            };
+                            img.onerror = resolve;
+                            img.src = data.floor.floor_plan_data;
                         });
-                        
-                        updateElementList();
-                        render();
-                        showToast(`Projekt "${data.project.name}" geladen!`, 'success');
-                    };
-                    img.src = data.floor.floor_plan_data;
-                } else {
-                    showToast('Projekt geladen (kein Grundriss)', 'info');
+                    }
+                    
+                    state.currentFloor = 'EG';
+                    loadFloorData('EG');
                 }
+                
+                renderFloorTabs();
+                showCanvas();
+                updateElementList();
+                updateRoomList();
+                render();
+                showToast(`Projekt "${data.project.name}" geladen!`, 'success');
+                
             } catch (error) {
                 console.error('Load error:', error);
                 showToast('Fehler beim Laden: ' + error.message, 'warning');
