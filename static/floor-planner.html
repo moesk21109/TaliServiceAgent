@@ -917,7 +917,7 @@
                     Raster anzeigen
                 </label>
                 <label>
-                    <input type="checkbox" id="snapToGrid" checked onchange="updateGridSettings()">
+                    <input type="checkbox" id="snapToGrid" onchange="updateGridSettings()">
                     Am Raster ausrichten
                 </label>
                 <div class="prop-row">
@@ -1441,7 +1441,7 @@
             elementCounts: {},
             // Grid settings
             gridEnabled: true,
-            snapToGrid: true,
+            snapToGrid: false,  // Disabled for free positioning
             gridSize: 50,  // pixels
             gridScale: 100,  // 1:100 scale
             // Measure/Reference settings
@@ -2150,25 +2150,22 @@
             const firstX = Math.floor(startX / gridSize) * gridSize;
             const firstY = Math.floor(startY / gridSize) * gridSize;
             
-            ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
-            ctx.lineWidth = 0.5;
-            
-            // Draw vertical lines
+            // Draw vertical lines (red)
             for (let x = firstX; x <= startX + viewWidth + gridSize; x += gridSize) {
                 const isMajor = Math.round(x / gridSize) % 5 === 0;
-                ctx.strokeStyle = isMajor ? 'rgba(100, 100, 100, 0.5)' : 'rgba(100, 100, 100, 0.2)';
-                ctx.lineWidth = isMajor ? 1 : 0.5;
+                ctx.strokeStyle = isMajor ? 'rgba(255, 80, 80, 0.6)' : 'rgba(255, 100, 100, 0.3)';
+                ctx.lineWidth = isMajor ? 1.5 : 0.5;
                 ctx.beginPath();
                 ctx.moveTo(x, startY);
                 ctx.lineTo(x, startY + viewHeight + gridSize);
                 ctx.stroke();
             }
             
-            // Draw horizontal lines
+            // Draw horizontal lines (red)
             for (let y = firstY; y <= startY + viewHeight + gridSize; y += gridSize) {
                 const isMajor = Math.round(y / gridSize) % 5 === 0;
-                ctx.strokeStyle = isMajor ? 'rgba(100, 100, 100, 0.5)' : 'rgba(100, 100, 100, 0.2)';
-                ctx.lineWidth = isMajor ? 1 : 0.5;
+                ctx.strokeStyle = isMajor ? 'rgba(255, 80, 80, 0.6)' : 'rgba(255, 100, 100, 0.3)';
+                ctx.lineWidth = isMajor ? 1.5 : 0.5;
                 ctx.beginPath();
                 ctx.moveTo(startX, y);
                 ctx.lineTo(startX + viewWidth + gridSize, y);
