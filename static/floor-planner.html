@@ -1613,31 +1613,41 @@
             ctx.save();
             ctx.translate(x, y);
             
-            // Draw white box with border
+            // Draw white box with rounded corners (modern look)
             const half = SYMBOL_SIZE / 2;
             ctx.fillStyle = 'white';
-            ctx.strokeStyle = isSelected ? '#0099ff' : '#333';
-            ctx.lineWidth = isSelected ? 3 : 1.5;
+            ctx.strokeStyle = isSelected ? '#0099ff' : '#444';
+            ctx.lineWidth = isSelected ? 2.5 : 1.5;
             
             ctx.beginPath();
-            ctx.rect(-half, -half, SYMBOL_SIZE, SYMBOL_SIZE);
+            ctx.roundRect(-half, -half, SYMBOL_SIZE, SYMBOL_SIZE, 4);
             ctx.fill();
             ctx.stroke();
             
+            // Subtle shadow effect
+            if (!isSelected) {
+                ctx.shadowColor = 'rgba(0,0,0,0.15)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+            }
+            
             // Draw inner symbol (rotated)
             ctx.save();
+            ctx.shadowColor = 'transparent';
             ctx.rotate(rotation * Math.PI / 180);
             innerDraw(ctx);
             ctx.restore();
             
-            // Draw direction arrow (black triangle) - always pointing based on rotation
+            // Draw direction arrow (small triangle) - cleaner look
             ctx.save();
+            ctx.shadowColor = 'transparent';
             ctx.rotate(rotation * Math.PI / 180);
-            ctx.fillStyle = '#000';
+            ctx.fillStyle = '#666';
             ctx.beginPath();
-            ctx.moveTo(half + 8, 0);
-            ctx.lineTo(half + 2, -6);
-            ctx.lineTo(half + 2, 6);
+            ctx.moveTo(half + 6, 0);
+            ctx.lineTo(half + 1, -4);
+            ctx.lineTo(half + 1, 4);
             ctx.closePath();
             ctx.fill();
             ctx.restore();
@@ -1692,6 +1702,82 @@
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
             ctx.fillText(text, badgeX + padding, badgeY);
+            
+            ctx.restore();
+        }
+        
+        // =============================================
+        // ELEMENT GROUPING / COMBINATION FRAMES
+        // =============================================
+        function findElementGroups(elements, maxDistance = 40) {
+            // Find groups of elements that are close together (combinations)
+            const groups = [];
+            const used = new Set();
+            
+            elements.forEach(el => {
+                if (used.has(el.id)) return;
+                
+                const group = [el];
+                used.add(el.id);
+                
+                // Find all elements close to this one
+                elements.forEach(other => {
+                    if (used.has(other.id)) return;
+                    
+                    // Check if any element in group is close to this one
+                    const isClose = group.some(g => {
+                        const dist = Math.sqrt(Math.pow(g.x - other.x, 2) + Math.pow(g.y - other.y, 2));
+                        return dist < maxDistance;
+                    });
+                    
+                    if (isClose) {
+                        group.push(other);
+                        used.add(other.id);
+                    }
+                });
+                
+                groups.push(group);
+            });
+            
+            return groups;
+        }
+        
+        function drawCombinationFrame(ctx, group) {
+            if (group.length < 2) return;
+            
+            // Sort by Y position (top to bottom), then by X (left to right)
+            const sorted = [...group].sort((a, b) => {
+                if (Math.abs(a.y - b.y) < 20) return a.x - b.x;
+                return a.y - b.y;
+            });
+            
+            // Calculate bounding box with padding
+            const padding = 8;
+            const minX = Math.min(...sorted.map(e => e.x)) - SYMBOL_SIZE/2 - padding;
+            const maxX = Math.max(...sorted.map(e => e.x)) + SYMBOL_SIZE/2 + padding;
+            const minY = Math.min(...sorted.map(e => e.y)) - SYMBOL_SIZE/2 - padding;
+            const maxY = Math.max(...sorted.map(e => e.y)) + SYMBOL_SIZE/2 + padding;
+            
+            ctx.save();
+            
+            // Outer frame (dark gray, modern look)
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 3;
+            ctx.fillStyle = 'rgba(60, 60, 60, 0.3)';
+            
+            ctx.beginPath();
+            ctx.roundRect(minX, minY, maxX - minX, maxY - minY, 6);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Combination label (e.g., "3er")
+            const count = group.length;
+            const labelText = `${count}er`;
+            ctx.font = 'bold 10px Arial';
+            ctx.fillStyle = '#888';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+            ctx.fillText(labelText, maxX - 4, minY + 3);
             
             ctx.restore();
         }
@@ -2186,6 +2272,35 @@
             
             saveHistory();
             
+            // Smart snap: Check if there's a nearby element to align with
+            const snapDistance = 50;
+            let snapX = x;
+            let snapY = y;
+            
+            state.elements.forEach(el => {
+                const dist = Math.sqrt(Math.pow(el.x - x, 2) + Math.pow(el.y - y, 2));
+                if (dist < snapDistance && dist > 5) {
+                    // Check if should align horizontally (same Y) or vertically (same X)
+                    if (Math.abs(el.y - y) < 25) {
+                        // Align horizontally - place next to it
+                        snapY = el.y;
+                        if (x > el.x) {
+                            snapX = el.x + SYMBOL_SIZE + 4; // Place to the right
+                        } else {
+                            snapX = el.x - SYMBOL_SIZE - 4; // Place to the left
+                        }
+                    } else if (Math.abs(el.x - x) < 25) {
+                        // Align vertically - place below/above
+                        snapX = el.x;
+                        if (y > el.y) {
+                            snapY = el.y + SYMBOL_SIZE + 4; // Place below
+                        } else {
+                            snapY = el.y - SYMBOL_SIZE - 4; // Place above
+                        }
+                    }
+                }
+            });
+            
             // Generate unique ID
             const prefix = config.prefix;
             if (!state.elementCounts[prefix]) {
@@ -2199,8 +2314,8 @@
                 type: type,
                 name: config.name,
                 code: code,
-                x: x,
-                y: y,
+                x: snapX,
+                y: snapY,
                 rotation: 0,  // 0, 90, 180, 270 degrees
                 height: config.height || 30,  // Mounting height in cm
                 room: room,
@@ -2405,6 +2520,16 @@
                 ctx.font = '12px Arial';
                 ctx.fillStyle = '#ffc107';
                 ctx.fillText(areaText, room.x + 10, room.y + 27);
+            });
+            
+            // Find element groups (combinations within 40px of each other)
+            const elementGroups = findElementGroups(state.elements, 40);
+            
+            // Draw combination frames first (behind elements)
+            elementGroups.forEach(group => {
+                if (group.length > 1) {
+                    drawCombinationFrame(ctx, group);
+                }
             });
             
             // Draw elements with professional symbols (JetPlan style)
