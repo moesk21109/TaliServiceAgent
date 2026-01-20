@@ -2039,9 +2039,11 @@
         // =============================================
         async function loadCustomers() {
             try {
-                const response = await fetch('/api/customers');
+                const response = await fetch('/customers');
+                console.log('[loadCustomers] Response status:', response.status);
                 if (response.ok) {
                     const customers = await response.json();
+                    console.log('[loadCustomers] Loaded', customers.length, 'customers');
                     const select = document.getElementById('customerSelect');
                     customers.forEach(c => {
                         const option = document.createElement('option');
@@ -2050,6 +2052,8 @@
                         option.textContent = c.name + (c.city ? ` (${c.city})` : '');
                         select.appendChild(option);
                     });
+                } else {
+                    console.error('[loadCustomers] Error:', response.status, response.statusText);
                 }
             } catch (e) {
                 console.error('Error loading customers:', e);
@@ -4192,7 +4196,7 @@
             // Load customers for selection
             let customersHtml = '<option value="">-- Kunde auswählen --</option>';
             try {
-                const response = await fetch('/api/customers');
+                const response = await fetch('/customers');
                 if (response.ok) {
                     const customers = await response.json();
                     customers.forEach(c => {
