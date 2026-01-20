@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elektro-Planer - Tali Service</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #e91e63;
+            --sidebar-width: 280px;
+            --toolbar-height: 50px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            background: #1a1a2e;
+        }
+        
+        /* Header */
+        .app-header {
+            height: 50px;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+        }
+        
+        .app-header h1 {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+        
+        .header-actions button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        
+        .header-actions button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        /* Main Layout */
+        .app-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+        
+        /* Left Toolbar */
+        .left-toolbar {
+            width: 50px;
+            background: #16213e;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 5px;
+            gap: 5px;
+        }
+        
+        .tool-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: transparent;
+            color: #888;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .tool-btn:hover {
+            background: #1f4068;
+            color: white;
+        }
+        
+        .tool-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .tool-divider {
+            height: 1px;
+            background: #333;
+            margin: 10px 0;
+        }
+        
+        /* Canvas Area */
+        .canvas-container {
+            flex: 1;
+            background: #0f0f23;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #floorCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+        
+        .canvas-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            bottom: 10px;
+            right: 300px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .zoom-btn:hover {
+            background: var(--primary);
+        }
+        
+        /* Right Sidebar - Elements */
+        .right-sidebar {
+            width: var(--sidebar-width);
+            background: #16213e;
+            border-left: 1px solid #333;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .sidebar-header h3 {
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid #333;
+        }
+        
+        .sidebar-tab {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .sidebar-tab.active {
+            color: white;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .element-category {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        
+        .category-header span {
+            background: #333;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+        
+        .element-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+        }
+        
+        .element-item {
+            aspect-ratio: 1;
+            background: #1f4068;
+            border: 1px solid #333;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .element-item:hover {
+            background: #2a5298;
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+        
+        .element-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .element-item img,
+        .element-item svg {
+            width: 28px;
+            height: 28px;
+        }
+        
+        .element-item .element-icon {
+            font-size: 1.5rem;
+        }
+        
+        /* Element List View */
+        .element-list {
+            padding: 10px;
+        }
+        
+        .element-list-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: #1f4068;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            color: white;
+            font-size: 0.8rem;
+        }
+        
+        .element-list-item .icon {
+            width: 30px;
+            text-align: center;
+            margin-right: 10px;
+        }
+        
+        .element-list-item .name {
+            flex: 1;
+        }
+        
+        .element-list-item .code {
+            background: #333;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+        
+        /* Upload Modal */
+        .upload-area {
+            border: 2px dashed #444;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: rgba(233, 30, 99, 0.1);
+        }
+        
+        .upload-area i {
+            font-size: 3rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .upload-area p {
+            color: #888;
+            margin: 0;
+        }
+        
+        /* Share Modal */
+        .share-link-box {
+            background: #1f4068;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .share-link-box input {
+            flex: 1;
+            background: #0f0f23;
+            border: 1px solid #333;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        /* Room on canvas */
+        .room-label {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        
+        /* Placed element on canvas */
+        .placed-element {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: move;
+            font-size: 1.2rem;
+            transition: transform 0.1s;
+        }
+        
+        .placed-element:hover {
+            transform: scale(1.2);
+        }
+        
+        .placed-element.selected {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+        
+        /* Context Menu */
+        .context-menu {
+            position: absolute;
+            background: #1f4068;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 5px 0;
+            min-width: 150px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .context-menu.show {
+            display: block;
+        }
+        
+        .context-menu-item {
+            padding: 8px 15px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .context-menu-item:hover {
+            background: var(--primary);
+        }
+        
+        .context-menu-item i {
+            width: 20px;
+        }
+        
+        /* Tabs Panel */
+        .tabs-panel {
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            right: var(--sidebar-width);
+            height: 250px;
+            background: #16213e;
+            border-top: 1px solid #333;
+            display: none;
+        }
+        
+        .tabs-panel.show {
+            display: block;
+        }
+        
+        .tabs-header {
+            display: flex;
+            background: #0f0f23;
+            border-bottom: 1px solid #333;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        
+        .tab-btn.active {
+            color: white;
+            background: #16213e;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .tab-close {
+            margin-left: auto;
+            padding: 10px 15px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+        }
+        
+        .tab-content {
+            padding: 15px;
+            height: calc(100% - 42px);
+            overflow-y: auto;
+        }
+        
+        .list-table {
+            width: 100%;
+            color: white;
+            font-size: 0.85rem;
+        }
+        
+        .list-table th {
+            text-align: left;
+            padding: 8px;
+            background: #0f0f23;
+            color: #888;
+            font-weight: 500;
+        }
+        
+        .list-table td {
+            padding: 8px;
+            border-bottom: 1px solid #333;
+        }
+        
+        /* No floor plan state */
+        .no-plan-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+        }
+        
+        .no-plan-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .no-plan-state h3 {
+            margin-bottom: 10px;
+        }
+        
+        .no-plan-state button {
+            margin-top: 20px;
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        /* Toast notification */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="d-flex align-items-center gap-3">
+            <a href="/" class="text-white text-decoration-none">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h1><i class="bi bi-lightning-charge-fill me-2"></i>Elektro-Planer</h1>
+            <span class="badge bg-light text-dark" id="projectName">Neues Projekt</span>
+        </div>
+        <div class="header-actions">
+            <button onclick="showListsPanel()"><i class="bi bi-list-ul"></i> Listen</button>
+            <button onclick="showShareModal()"><i class="bi bi-share"></i> Teilen</button>
+            <button onclick="generateQuotation()" class="btn-success" style="background: #28a745;">
+                <i class="bi bi-file-text"></i> Angebot erstellen
+            </button>
+            <button onclick="saveProject()"><i class="bi bi-save"></i> Speichern</button>
+        </div>
+    </header>
+    
+    <div class="app-container">
+        <!-- Left Toolbar -->
+        <div class="left-toolbar">
+            <button class="tool-btn active" data-tool="select" title="Auswählen (V)">
+                <i class="bi bi-cursor"></i>
+            </button>
+            <button class="tool-btn" data-tool="pan" title="Verschieben (H)">
+                <i class="bi bi-arrows-move"></i>
+            </button>
+            <div class="tool-divider"></div>
+            <button class="tool-btn" data-tool="room" title="Raum zeichnen (R)">
+                <i class="bi bi-square"></i>
+            </button>
+            <button class="tool-btn" data-tool="polygon" title="Polygon (P)">
+                <i class="bi bi-pentagon"></i>
+            </button>
+            <div class="tool-divider"></div>
+            <button class="tool-btn" data-tool="line" title="Linie (L)">
+                <i class="bi bi-slash-lg"></i>
+            </button>
+            <button class="tool-btn" data-tool="text" title="Text (T)">
+                <i class="bi bi-fonts"></i>
+            </button>
+            <button class="tool-btn" data-tool="measure" title="Messen (M)">
+                <i class="bi bi-rulers"></i>
+            </button>
+            <div class="tool-divider"></div>
+            <button class="tool-btn" onclick="uploadFloorPlan()" title="Grundriss hochladen">
+                <i class="bi bi-upload"></i>
+            </button>
+            <div style="flex:1"></div>
+            <button class="tool-btn" onclick="showSettings()" title="Einstellungen">
+                <i class="bi bi-gear"></i>
+            </button>
+        </div>
+        
+        <!-- Canvas Area -->
+        <div class="canvas-container" id="canvasContainer">
+            <!-- No plan state -->
+            <div class="no-plan-state" id="noPlanState">
+                <i class="bi bi-image"></i>
+                <h3>Kein Grundriss geladen</h3>
+                <p>Laden Sie einen Grundriss hoch um zu beginnen</p>
+                <button onclick="uploadFloorPlan()">
+                    <i class="bi bi-upload me-2"></i>Grundriss hochladen
+                </button>
+            </div>
+            
+            <!-- Canvas -->
+            <canvas id="floorCanvas" style="display: none;"></canvas>
+            
+            <!-- Canvas Info -->
+            <div class="canvas-info" id="canvasInfo" style="display: none;">
+                <span id="mouseCoords">X: 0 | Y: 0</span> | 
+                <span id="zoomLevel">100%</span> |
+                <span id="elementCount">0 Elemente</span>
+            </div>
+            
+            <!-- Zoom Controls -->
+            <div class="zoom-controls" id="zoomControls" style="display: none;">
+                <button class="zoom-btn" onclick="zoomIn()"><i class="bi bi-zoom-in"></i></button>
+                <button class="zoom-btn" onclick="zoomOut()"><i class="bi bi-zoom-out"></i></button>
+                <button class="zoom-btn" onclick="zoomFit()"><i class="bi bi-arrows-fullscreen"></i></button>
+            </div>
+        </div>
+        
+        <!-- Right Sidebar - Elements -->
+        <div class="right-sidebar">
+            <div class="sidebar-header">
+                <h3>Elemente</h3>
+                <div>
+                    <button class="btn btn-sm btn-outline-light" onclick="toggleFavorites()">
+                        <i class="bi bi-star"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-light" onclick="searchElements()">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Steckdosen -->
+            <div class="element-category">
+                <div class="category-header" onclick="toggleCategory(this)">
+                    STECKDOSEN <span id="countSteckdosen">15</span>
+                </div>
+                <div class="element-grid" id="gridSteckdosen">
+                    <div class="element-item" draggable="true" data-type="steckdose_schuko" data-name="Schuko-Steckdose" title="Schuko-Steckdose">
+                        <span class="element-icon">🔌</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="steckdose_doppelt" data-name="Doppelsteckdose" title="Doppelsteckdose">
+                        <span class="element-icon">🔌🔌</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="steckdose_usb" data-name="Steckdose mit USB" title="Steckdose mit USB">
+                        <span class="element-icon">🔋</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="steckdose_cee16" data-name="CEE 16A" title="CEE 16A rot">
+                        <span class="element-icon" style="color: red;">⚡</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="steckdose_cee32" data-name="CEE 32A" title="CEE 32A blau">
+                        <span class="element-icon" style="color: blue;">⚡</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="steckdose_boden" data-name="Bodentank" title="Bodentank">
+                        <span class="element-icon">⬜</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Schalter/Taster -->
+            <div class="element-category">
+                <div class="category-header" onclick="toggleCategory(this)">
+                    SCHALTER / TASTER <span id="countSchalter">27</span>
+                </div>
+                <div class="element-grid" id="gridSchalter">
+                    <div class="element-item" draggable="true" data-type="schalter_aus" data-name="Ausschalter" title="Ausschalter">
+                        <span class="element-icon">⚪</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="schalter_wechsel" data-name="Wechselschalter" title="Wechselschalter">
+                        <span class="element-icon">↔️</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="schalter_kreuz" data-name="Kreuzschalter" title="Kreuzschalter">
+                        <span class="element-icon">✚</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="schalter_dimmer" data-name="Dimmer" title="Dimmer">
+                        <span class="element-icon">🔆</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="schalter_taster" data-name="Taster" title="Taster">
+                        <span class="element-icon">⏺️</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="schalter_jalousie" data-name="Jalousietaster" title="Jalousietaster">
+                        <span class="element-icon">▤</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="schalter_bewegung" data-name="Bewegungsmelder" title="Bewegungsmelder">
+                        <span class="element-icon">📡</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Beleuchtung -->
+            <div class="element-category">
+                <div class="category-header" onclick="toggleCategory(this)">
+                    BELEUCHTUNG <span id="countLicht">13</span>
+                </div>
+                <div class="element-grid" id="gridLicht">
+                    <div class="element-item" draggable="true" data-type="licht_decke" data-name="Deckenauslass" title="Deckenauslass">
+                        <span class="element-icon">💡</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="licht_wand" data-name="Wandauslass" title="Wandauslass">
+                        <span class="element-icon">🔦</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="licht_spot" data-name="Einbaustrahler" title="Einbaustrahler">
+                        <span class="element-icon">⭕</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="licht_aussen" data-name="Außenleuchte" title="Außenleuchte">
+                        <span class="element-icon">🌙</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="licht_notaus" data-name="Notausgangsleuchte" title="Notausgangsleuchte">
+                        <span class="element-icon">🚪</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Anschlüsse -->
+            <div class="element-category">
+                <div class="category-header" onclick="toggleCategory(this)">
+                    ANSCHLÜSSE <span id="countAnschluss">17</span>
+                </div>
+                <div class="element-grid" id="gridAnschluss">
+                    <div class="element-item" draggable="true" data-type="anschluss_herd" data-name="Herdanschluss" title="Herdanschluss 400V">
+                        <span class="element-icon">🍳</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="anschluss_dunst" data-name="Dunstabzug" title="Dunstabzug">
+                        <span class="element-icon">💨</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="anschluss_spuel" data-name="Spülmaschine" title="Spülmaschine">
+                        <span class="element-icon">🫧</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="anschluss_wasch" data-name="Waschmaschine" title="Waschmaschine">
+                        <span class="element-icon">🧺</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="anschluss_tv" data-name="TV-Anschluss" title="TV-Anschluss">
+                        <span class="element-icon">📺</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="anschluss_netzwerk" data-name="Netzwerk RJ45" title="Netzwerk RJ45">
+                        <span class="element-icon">🌐</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="anschluss_telefon" data-name="Telefon TAE" title="Telefon TAE">
+                        <span class="element-icon">☎️</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sonstiges -->
+            <div class="element-category">
+                <div class="category-header" onclick="toggleCategory(this)">
+                    SONSTIGES <span>8</span>
+                </div>
+                <div class="element-grid">
+                    <div class="element-item" draggable="true" data-type="rauchmelder" data-name="Rauchmelder" title="Rauchmelder">
+                        <span class="element-icon">🔔</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="thermostat" data-name="Thermostat" title="Thermostat">
+                        <span class="element-icon">🌡️</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="tuerklingel" data-name="Türklingel" title="Türklingel">
+                        <span class="element-icon">🔔</span>
+                    </div>
+                    <div class="element-item" draggable="true" data-type="gegensprech" data-name="Gegensprechanlage" title="Gegensprechanlage">
+                        <span class="element-icon">📞</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lists Panel (Bottom) -->
+    <div class="tabs-panel" id="listsPanel">
+        <div class="tabs-header">
+            <button class="tab-btn active" data-tab="elements">Elementliste</button>
+            <button class="tab-btn" data-tab="materials">Stückliste</button>
+            <button class="tab-btn" data-tab="positions">Angebotspositionen</button>
+            <button class="tab-btn" data-tab="orders">Bestellliste</button>
+            <button class="tab-close" onclick="hideListsPanel()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="tab-content" id="tabContent">
+            <!-- Elementliste -->
+            <table class="list-table" id="elementListTable">
+                <thead>
+                    <tr>
+                        <th>⭐</th>
+                        <th>Symbol</th>
+                        <th>Elementname</th>
+                        <th>Kategorie</th>
+                        <th>Stock</th>
+                        <th>Raum</th>
+                        <th>Kennung</th>
+                    </tr>
+                </thead>
+                <tbody id="elementListBody">
+                    <!-- Filled by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="duplicateElement()">
+            <i class="bi bi-copy"></i> Duplizieren
+        </div>
+        <div class="context-menu-item" onclick="rotateElement()">
+            <i class="bi bi-arrow-clockwise"></i> Drehen
+        </div>
+        <div class="context-menu-item" onclick="editElement()">
+            <i class="bi bi-pencil"></i> Bearbeiten
+        </div>
+        <div class="context-menu-item" onclick="deleteElement()" style="color: #ff5252;">
+            <i class="bi bi-trash"></i> Löschen
+        </div>
+    </div>
+    
+    <!-- Upload Modal -->
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Grundriss hochladen</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Stockwerk</label>
+                        <select class="form-select bg-dark text-white" id="floorSelect">
+                            <option value="EG">Erdgeschoss (EG)</option>
+                            <option value="OG">Obergeschoss (OG)</option>
+                            <option value="UG">Untergeschoss (UG)</option>
+                            <option value="DG">Dachgeschoss (DG)</option>
+                        </select>
+                    </div>
+                    <div class="upload-area" id="uploadArea">
+                        <i class="bi bi-cloud-upload"></i>
+                        <p>Grundriss hier ablegen oder klicken</p>
+                        <p class="small text-muted">(PDF, JPG, PNG)</p>
+                    </div>
+                    <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Share Modal -->
+    <div class="modal fade" id="shareModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="bi bi-share me-2"></i>Projekt teilen</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="shareEnabled">
+                        <label class="form-check-label" for="shareEnabled">
+                            Kundenbearbeitung freigeben
+                        </label>
+                    </div>
+                    
+                    <div id="shareOptions" style="display:none;">
+                        <h6 class="mb-3">Berechtigungen:</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="permView" checked disabled>
+                            <label class="form-check-label" for="permView">Ansehen</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="permAdd" checked>
+                            <label class="form-check-label" for="permAdd">Elemente hinzufügen</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="permMove" checked>
+                            <label class="form-check-label" for="permMove">Elemente verschieben</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="permDelete">
+                            <label class="form-check-label" for="permDelete">Elemente löschen</label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="permComment" checked>
+                            <label class="form-check-label" for="permComment">Kommentare</label>
+                        </div>
+                        
+                        <label class="form-label">Teilen-Link:</label>
+                        <div class="share-link-box">
+                            <input type="text" id="shareLink" readonly value="https://tali-service-agent.onrender.com/plan/abc123">
+                            <button class="btn btn-primary" onclick="copyShareLink()">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3 d-flex gap-2">
+                            <button class="btn btn-outline-light flex-fill" onclick="sendByEmail()">
+                                <i class="bi bi-envelope"></i> E-Mail
+                            </button>
+                            <button class="btn btn-success flex-fill" onclick="sendByWhatsApp()">
+                                <i class="bi bi-whatsapp"></i> WhatsApp
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script>
+        // =============================================
+        // GLOBAL STATE
+        // =============================================
+        const state = {
+            currentTool: 'select',
+            zoom: 1,
+            panX: 0,
+            panY: 0,
+            floorPlanImage: null,
+            elements: [],
+            rooms: [],
+            selectedElement: null,
+            isDragging: false,
+            isDrawing: false,
+            drawStart: null,
+            elementCounts: {}
+        };
+        
+        // Element type to Lexware mapping
+        const ELEMENT_CONFIG = {
+            steckdose_schuko: { prefix: 'SD', name: 'Schuko-Steckdose', category: 'Steckdosen', price: 89, icon: '🔌' },
+            steckdose_doppelt: { prefix: 'SD', name: 'Doppelsteckdose', category: 'Steckdosen', price: 109, icon: '🔌🔌' },
+            steckdose_usb: { prefix: 'SD', name: 'Steckdose mit USB', category: 'Steckdosen', price: 119, icon: '🔋' },
+            steckdose_cee16: { prefix: 'CEE', name: 'CEE 16A', category: 'Steckdosen', price: 189, icon: '⚡' },
+            steckdose_cee32: { prefix: 'CEE', name: 'CEE 32A', category: 'Steckdosen', price: 249, icon: '⚡' },
+            schalter_aus: { prefix: 'AS', name: 'Ausschalter', category: 'Schalter', price: 79, icon: '⚪' },
+            schalter_wechsel: { prefix: 'WS', name: 'Wechselschalter', category: 'Schalter', price: 95, icon: '↔️' },
+            schalter_kreuz: { prefix: 'KS', name: 'Kreuzschalter', category: 'Schalter', price: 105, icon: '✚' },
+            schalter_dimmer: { prefix: 'DI', name: 'Dimmer', category: 'Schalter', price: 149, icon: '🔆' },
+            schalter_taster: { prefix: 'TA', name: 'Taster', category: 'Schalter', price: 85, icon: '⏺️' },
+            schalter_bewegung: { prefix: 'BM', name: 'Bewegungsmelder', category: 'Schalter', price: 129, icon: '📡' },
+            licht_decke: { prefix: 'LA', name: 'Deckenauslass', category: 'Beleuchtung', price: 75, icon: '💡' },
+            licht_wand: { prefix: 'LA', name: 'Wandauslass', category: 'Beleuchtung', price: 75, icon: '🔦' },
+            licht_spot: { prefix: 'SP', name: 'Einbaustrahler', category: 'Beleuchtung', price: 95, icon: '⭕' },
+            anschluss_herd: { prefix: 'HA', name: 'Herdanschluss', category: 'Anschlüsse', price: 189, icon: '🍳' },
+            anschluss_netzwerk: { prefix: 'NW', name: 'Netzwerk RJ45', category: 'Anschlüsse', price: 85, icon: '🌐' },
+            anschluss_tv: { prefix: 'TV', name: 'TV-Anschluss', category: 'Anschlüsse', price: 79, icon: '📺' },
+            rauchmelder: { prefix: 'RM', name: 'Rauchmelder', category: 'Sonstiges', price: 65, icon: '🔔' },
+        };
+        
+        // Canvas & Context
+        let canvas, ctx;
+        
+        // =============================================
+        // INITIALIZATION
+        // =============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('floorCanvas');
+            ctx = canvas.getContext('2d');
+            
+            initToolbar();
+            initDragDrop();
+            initCanvasEvents();
+            initUpload();
+            initTabs();
+            initShareModal();
+            
+            // Check if project ID in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectId = urlParams.get('project');
+            if (projectId) {
+                loadProject(projectId);
+            }
+        });
+        
+        // =============================================
+        // TOOLBAR
+        // =============================================
+        function initToolbar() {
+            document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.currentTool = btn.dataset.tool;
+                    updateCursor();
+                });
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+                
+                switch(e.key.toLowerCase()) {
+                    case 'v': selectTool('select'); break;
+                    case 'h': selectTool('pan'); break;
+                    case 'r': selectTool('room'); break;
+                    case 'delete': deleteElement(); break;
+                    case 'escape': deselectAll(); break;
+                }
+            });
+        }
+        
+        function selectTool(tool) {
+            document.querySelector(`.tool-btn[data-tool="${tool}"]`)?.click();
+        }
+        
+        function updateCursor() {
+            const cursors = {
+                select: 'default',
+                pan: 'grab',
+                room: 'crosshair',
+                polygon: 'crosshair',
+                line: 'crosshair',
+                text: 'text',
+                measure: 'crosshair'
+            };
+            canvas.style.cursor = cursors[state.currentTool] || 'default';
+        }
+        
+        // =============================================
+        // DRAG & DROP ELEMENTS
+        // =============================================
+        function initDragDrop() {
+            document.querySelectorAll('.element-item').forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('element-type', item.dataset.type);
+                    e.dataTransfer.setData('element-name', item.dataset.name);
+                    item.classList.add('dragging');
+                });
+                
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('dragging');
+                });
+            });
+            
+            // Canvas drop zone
+            const canvasContainer = document.getElementById('canvasContainer');
+            
+            canvasContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            
+            canvasContainer.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (!state.floorPlanImage) {
+                    showToast('Bitte zuerst einen Grundriss hochladen!', 'warning');
+                    return;
+                }
+                
+                const type = e.dataTransfer.getData('element-type');
+                const name = e.dataTransfer.getData('element-name');
+                
+                if (type) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left - state.panX) / state.zoom;
+                    const y = (e.clientY - rect.top - state.panY) / state.zoom;
+                    
+                    addElement(type, x, y);
+                }
+            });
+        }
+        
+        // =============================================
+        // ELEMENT MANAGEMENT
+        // =============================================
+        function addElement(type, x, y, room = 'Unzugeordnet') {
+            const config = ELEMENT_CONFIG[type];
+            if (!config) return;
+            
+            // Generate unique ID
+            const prefix = config.prefix;
+            if (!state.elementCounts[prefix]) {
+                state.elementCounts[prefix] = 0;
+            }
+            state.elementCounts[prefix]++;
+            const code = `${prefix}${String(state.elementCounts[prefix]).padStart(2, '0')}`;
+            
+            const element = {
+                id: Date.now(),
+                type: type,
+                name: config.name,
+                code: code,
+                x: x,
+                y: y,
+                rotation: 0,
+                room: room,
+                floor: document.getElementById('floorSelect')?.value || 'EG',
+                category: config.category,
+                icon: config.icon,
+                price: config.price
+            };
+            
+            state.elements.push(element);
+            updateElementCount();
+            render();
+            updateElementList();
+            
+            showToast(`${config.name} hinzugefügt (${code})`, 'success');
+        }
+        
+        function updateElementCount() {
+            document.getElementById('elementCount').textContent = `${state.elements.length} Elemente`;
+        }
+        
+        function updateElementList() {
+            const tbody = document.getElementById('elementListBody');
+            tbody.innerHTML = state.elements.map(el => `
+                <tr>
+                    <td><i class="bi bi-star text-muted"></i></td>
+                    <td>${el.icon}</td>
+                    <td>${el.name}</td>
+                    <td>${el.category}</td>
+                    <td>${el.floor}</td>
+                    <td>${el.room}</td>
+                    <td><span class="badge bg-secondary">${el.code}</span></td>
+                </tr>
+            `).join('');
+        }
+        
+        // =============================================
+        // CANVAS RENDERING
+        // =============================================
+        function render() {
+            if (!ctx) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            
+            // Apply pan and zoom
+            ctx.translate(state.panX, state.panY);
+            ctx.scale(state.zoom, state.zoom);
+            
+            // Draw floor plan image
+            if (state.floorPlanImage) {
+                ctx.drawImage(state.floorPlanImage, 0, 0);
+            }
+            
+            // Draw rooms
+            state.rooms.forEach(room => {
+                ctx.fillStyle = room.color + '40'; // Semi-transparent
+                ctx.strokeStyle = room.color;
+                ctx.lineWidth = 2;
+                ctx.fillRect(room.x, room.y, room.width, room.height);
+                ctx.strokeRect(room.x, room.y, room.width, room.height);
+                
+                // Room label
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.fillText(room.name, room.x + 5, room.y + 20);
+            });
+            
+            // Draw elements
+            state.elements.forEach(el => {
+                const isSelected = state.selectedElement?.id === el.id;
+                
+                // Background circle
+                ctx.beginPath();
+                ctx.arc(el.x, el.y, 15, 0, Math.PI * 2);
+                ctx.fillStyle = isSelected ? '#e91e63' : '#1f4068';
+                ctx.fill();
+                ctx.strokeStyle = isSelected ? '#fff' : '#333';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Icon
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'white';
+                ctx.fillText(el.icon, el.x, el.y);
+                
+                // Code label
+                ctx.font = '10px Arial';
+                ctx.fillStyle = '#888';
+                ctx.fillText(el.code, el.x, el.y + 25);
+            });
+            
+            // Draw room being created
+            if (state.isDrawing && state.drawStart && state.currentTool === 'room') {
+                ctx.strokeStyle = '#ffeb3b';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(
+                    state.drawStart.x, 
+                    state.drawStart.y, 
+                    state.drawCurrent.x - state.drawStart.x,
+                    state.drawCurrent.y - state.drawStart.y
+                );
+                ctx.setLineDash([]);
+            }
+            
+            ctx.restore();
+        }
+        
+        // =============================================
+        // CANVAS EVENTS
+        // =============================================
+        function initCanvasEvents() {
+            canvas.addEventListener('mousedown', onCanvasMouseDown);
+            canvas.addEventListener('mousemove', onCanvasMouseMove);
+            canvas.addEventListener('mouseup', onCanvasMouseUp);
+            canvas.addEventListener('wheel', onCanvasWheel);
+            canvas.addEventListener('contextmenu', onContextMenu);
+            
+            // Double click to edit
+            canvas.addEventListener('dblclick', onCanvasDoubleClick);
+        }
+        
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left - state.panX) / state.zoom,
+                y: (e.clientY - rect.top - state.panY) / state.zoom
+            };
+        }
+        
+        function onCanvasMouseDown(e) {
+            const coords = getCanvasCoords(e);
+            
+            if (state.currentTool === 'select') {
+                // Check if clicking on element
+                const clickedElement = state.elements.find(el => {
+                    const dist = Math.sqrt((el.x - coords.x) ** 2 + (el.y - coords.y) ** 2);
+                    return dist < 20;
+                });
+                
+                if (clickedElement) {
+                    state.selectedElement = clickedElement;
+                    state.isDragging = true;
+                    render();
+                } else {
+                    state.selectedElement = null;
+                    render();
+                }
+            } else if (state.currentTool === 'pan') {
+                state.isPanning = true;
+                state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
+                canvas.style.cursor = 'grabbing';
+            } else if (state.currentTool === 'room') {
+                state.isDrawing = true;
+                state.drawStart = coords;
+                state.drawCurrent = coords;
+            }
+        }
+        
+        function onCanvasMouseMove(e) {
+            const coords = getCanvasCoords(e);
+            
+            // Update coordinate display
+            document.getElementById('mouseCoords').textContent = 
+                `X: ${Math.round(coords.x)} | Y: ${Math.round(coords.y)}`;
+            
+            if (state.isDragging && state.selectedElement) {
+                state.selectedElement.x = coords.x;
+                state.selectedElement.y = coords.y;
+                render();
+            } else if (state.isPanning) {
+                state.panX = e.clientX - state.panStart.x;
+                state.panY = e.clientY - state.panStart.y;
+                render();
+            } else if (state.isDrawing) {
+                state.drawCurrent = coords;
+                render();
+            }
+        }
+        
+        function onCanvasMouseUp(e) {
+            if (state.isDrawing && state.currentTool === 'room') {
+                const coords = getCanvasCoords(e);
+                const width = coords.x - state.drawStart.x;
+                const height = coords.y - state.drawStart.y;
+                
+                if (Math.abs(width) > 20 && Math.abs(height) > 20) {
+                    // Create room
+                    const roomName = prompt('Raumname:', 'Raum ' + (state.rooms.length + 1));
+                    if (roomName) {
+                        state.rooms.push({
+                            id: Date.now(),
+                            name: roomName,
+                            x: Math.min(state.drawStart.x, coords.x),
+                            y: Math.min(state.drawStart.y, coords.y),
+                            width: Math.abs(width),
+                            height: Math.abs(height),
+                            color: '#ffeb3b'
+                        });
+                    }
+                }
+            }
+            
+            state.isDragging = false;
+            state.isPanning = false;
+            state.isDrawing = false;
+            canvas.style.cursor = state.currentTool === 'pan' ? 'grab' : 'default';
+            render();
+        }
+        
+        function onCanvasWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.max(0.1, Math.min(5, state.zoom * delta));
+            
+            // Zoom towards mouse position
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            state.panX = mouseX - (mouseX - state.panX) * (newZoom / state.zoom);
+            state.panY = mouseY - (mouseY - state.panY) * (newZoom / state.zoom);
+            state.zoom = newZoom;
+            
+            document.getElementById('zoomLevel').textContent = Math.round(state.zoom * 100) + '%';
+            render();
+        }
+        
+        function onContextMenu(e) {
+            e.preventDefault();
+            if (state.selectedElement) {
+                const menu = document.getElementById('contextMenu');
+                menu.style.left = e.clientX + 'px';
+                menu.style.top = e.clientY + 'px';
+                menu.classList.add('show');
+                
+                // Hide on click outside
+                setTimeout(() => {
+                    document.addEventListener('click', hideContextMenu, { once: true });
+                }, 0);
+            }
+        }
+        
+        function hideContextMenu() {
+            document.getElementById('contextMenu').classList.remove('show');
+        }
+        
+        function onCanvasDoubleClick(e) {
+            const coords = getCanvasCoords(e);
+            
+            // Check if on room
+            const clickedRoom = state.rooms.find(room => 
+                coords.x >= room.x && coords.x <= room.x + room.width &&
+                coords.y >= room.y && coords.y <= room.y + room.height
+            );
+            
+            if (clickedRoom) {
+                const newName = prompt('Raumname:', clickedRoom.name);
+                if (newName) {
+                    clickedRoom.name = newName;
+                    render();
+                }
+            }
+        }
+        
+        // =============================================
+        // ZOOM CONTROLS
+        // =============================================
+        function zoomIn() {
+            state.zoom = Math.min(5, state.zoom * 1.2);
+            document.getElementById('zoomLevel').textContent = Math.round(state.zoom * 100) + '%';
+            render();
+        }
+        
+        function zoomOut() {
+            state.zoom = Math.max(0.1, state.zoom * 0.8);
+            document.getElementById('zoomLevel').textContent = Math.round(state.zoom * 100) + '%';
+            render();
+        }
+        
+        function zoomFit() {
+            if (state.floorPlanImage) {
+                const scaleX = canvas.width / state.floorPlanImage.width;
+                const scaleY = canvas.height / state.floorPlanImage.height;
+                state.zoom = Math.min(scaleX, scaleY) * 0.9;
+                state.panX = (canvas.width - state.floorPlanImage.width * state.zoom) / 2;
+                state.panY = (canvas.height - state.floorPlanImage.height * state.zoom) / 2;
+                document.getElementById('zoomLevel').textContent = Math.round(state.zoom * 100) + '%';
+                render();
+            }
+        }
+        
+        // =============================================
+        // FILE UPLOAD
+        // =============================================
+        function initUpload() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#e91e63';
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.borderColor = '#444';
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#444';
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) handleFile(file);
+            });
+        }
+        
+        function uploadFloorPlan() {
+            new bootstrap.Modal(document.getElementById('uploadModal')).show();
+        }
+        
+        async function handleFile(file) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('uploadModal'));
+            
+            if (file.type === 'application/pdf') {
+                // Handle PDF
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                const page = await pdf.getPage(1);
+                
+                const scale = 2;
+                const viewport = page.getViewport({ scale });
+                
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = viewport.width;
+                tempCanvas.height = viewport.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                await page.render({ canvasContext: tempCtx, viewport }).promise;
+                
+                const img = new Image();
+                img.onload = () => {
+                    state.floorPlanImage = img;
+                    showCanvas();
+                    modal?.hide();
+                };
+                img.src = tempCanvas.toDataURL();
+                
+            } else if (file.type.startsWith('image/')) {
+                // Handle Image
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        state.floorPlanImage = img;
+                        showCanvas();
+                        modal?.hide();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function showCanvas() {
+            document.getElementById('noPlanState').style.display = 'none';
+            canvas.style.display = 'block';
+            document.getElementById('canvasInfo').style.display = 'block';
+            document.getElementById('zoomControls').style.display = 'flex';
+            
+            // Resize canvas
+            const container = document.getElementById('canvasContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            zoomFit();
+            showToast('Grundriss geladen!', 'success');
+        }
+        
+        // =============================================
+        // TABS & LISTS
+        // =============================================
+        function initTabs() {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    showTabContent(btn.dataset.tab);
+                });
+            });
+        }
+        
+        function showListsPanel() {
+            document.getElementById('listsPanel').classList.add('show');
+            updateElementList();
+        }
+        
+        function hideListsPanel() {
+            document.getElementById('listsPanel').classList.remove('show');
+        }
+        
+        function showTabContent(tab) {
+            const content = document.getElementById('tabContent');
+            
+            if (tab === 'elements') {
+                updateElementList();
+            } else if (tab === 'materials') {
+                // Group by type
+                const materials = {};
+                state.elements.forEach(el => {
+                    if (!materials[el.type]) {
+                        materials[el.type] = { name: el.name, count: 0, price: el.price };
+                    }
+                    materials[el.type].count++;
+                });
+                
+                content.innerHTML = `
+                    <table class="list-table">
+                        <thead>
+                            <tr><th>Artikel</th><th>Anzahl</th><th>EP</th><th>GP</th></tr>
+                        </thead>
+                        <tbody>
+                            ${Object.values(materials).map(m => `
+                                <tr>
+                                    <td>${m.name}</td>
+                                    <td>${m.count}</td>
+                                    <td>${m.price}€</td>
+                                    <td>${m.count * m.price}€</td>
+                                </tr>
+                            `).join('')}
+                            <tr style="font-weight:bold;">
+                                <td colspan="3">GESAMT NETTO</td>
+                                <td>${Object.values(materials).reduce((sum, m) => sum + m.count * m.price, 0)}€</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+            } else if (tab === 'positions') {
+                content.innerHTML = `
+                    <p class="text-muted">Angebotspositionen werden aus Lexware geladen...</p>
+                    <button class="btn btn-primary" onclick="generateQuotation()">
+                        <i class="bi bi-file-text me-2"></i>Angebot in Lexware erstellen
+                    </button>
+                `;
+            }
+        }
+        
+        // =============================================
+        // SHARE FUNCTIONALITY
+        // =============================================
+        function initShareModal() {
+            document.getElementById('shareEnabled').addEventListener('change', (e) => {
+                document.getElementById('shareOptions').style.display = e.target.checked ? 'block' : 'none';
+            });
+        }
+        
+        function showShareModal() {
+            new bootstrap.Modal(document.getElementById('shareModal')).show();
+        }
+        
+        function copyShareLink() {
+            const link = document.getElementById('shareLink').value;
+            navigator.clipboard.writeText(link);
+            showToast('Link kopiert!', 'success');
+        }
+        
+        function sendByEmail() {
+            const link = document.getElementById('shareLink').value;
+            const subject = encodeURIComponent('Ihre Elektroplanung - Tali Service');
+            const body = encodeURIComponent(`Guten Tag,\n\nhier ist der Link zu Ihrer Elektroplanung:\n${link}\n\nSie können dort Ihre Wünsche eintragen.\n\nMit freundlichen Grüßen\nTali Service`);
+            window.open(`mailto:?subject=${subject}&body=${body}`);
+        }
+        
+        function sendByWhatsApp() {
+            const link = document.getElementById('shareLink').value;
+            const text = encodeURIComponent(`Hier ist der Link zu Ihrer Elektroplanung: ${link}`);
+            window.open(`https://wa.me/?text=${text}`);
+        }
+        
+        // =============================================
+        // ELEMENT ACTIONS
+        // =============================================
+        function deleteElement() {
+            if (state.selectedElement) {
+                state.elements = state.elements.filter(el => el.id !== state.selectedElement.id);
+                state.selectedElement = null;
+                hideContextMenu();
+                render();
+                updateElementList();
+                updateElementCount();
+            }
+        }
+        
+        function duplicateElement() {
+            if (state.selectedElement) {
+                addElement(
+                    state.selectedElement.type, 
+                    state.selectedElement.x + 30, 
+                    state.selectedElement.y + 30,
+                    state.selectedElement.room
+                );
+                hideContextMenu();
+            }
+        }
+        
+        function rotateElement() {
+            if (state.selectedElement) {
+                state.selectedElement.rotation = (state.selectedElement.rotation + 90) % 360;
+                hideContextMenu();
+                render();
+            }
+        }
+        
+        function deselectAll() {
+            state.selectedElement = null;
+            render();
+        }
+        
+        // =============================================
+        // PROJECT SAVE/LOAD
+        // =============================================
+        async function saveProject() {
+            const projectData = {
+                name: document.getElementById('projectName').textContent,
+                elements: state.elements,
+                rooms: state.rooms,
+                floor: document.getElementById('floorSelect')?.value || 'EG'
+            };
+            
+            // TODO: Save to backend
+            console.log('Saving project:', projectData);
+            showToast('Projekt gespeichert!', 'success');
+        }
+        
+        async function loadProject(projectId) {
+            // TODO: Load from backend
+            console.log('Loading project:', projectId);
+        }
+        
+        // =============================================
+        // QUOTATION
+        // =============================================
+        async function generateQuotation() {
+            if (state.elements.length === 0) {
+                showToast('Keine Elemente zum Erstellen eines Angebots!', 'warning');
+                return;
+            }
+            
+            // Group elements for quotation
+            const items = {};
+            state.elements.forEach(el => {
+                if (!items[el.type]) {
+                    items[el.type] = {
+                        name: el.name,
+                        quantity: 0,
+                        unit_price: el.price,
+                        unit: 'Stück'
+                    };
+                }
+                items[el.type].quantity++;
+            });
+            
+            // Add Baustelleneinrichtung
+            const positions = [
+                { name: 'Baustelleneinrichtung Elektro', quantity: 1, unit_price: 119, unit: 'Pauschale' },
+                ...Object.values(items)
+            ];
+            
+            const total = positions.reduce((sum, p) => sum + p.quantity * p.unit_price, 0);
+            
+            // Show summary
+            const summary = positions.map(p => 
+                `${p.quantity}x ${p.name} = ${p.quantity * p.unit_price}€`
+            ).join('\n');
+            
+            if (confirm(`Angebot erstellen?\n\n${summary}\n\nGESAMT: ${total}€ netto`)) {
+                showToast('Angebot wird erstellt...', 'info');
+                
+                // TODO: Call API to create quotation in Lexware
+                // await fetch('/api/quotations', { ... });
+                
+                setTimeout(() => {
+                    showToast('Angebot erfolgreich erstellt!', 'success');
+                }, 1500);
+            }
+        }
+        
+        // =============================================
+        // UTILITIES
+        // =============================================
+        function toggleCategory(header) {
+            const grid = header.nextElementSibling;
+            grid.style.display = grid.style.display === 'none' ? 'grid' : 'none';
+            header.querySelector('i')?.classList.toggle('bi-chevron-down');
+        }
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info'} mb-2`;
+            toast.style.cssText = 'min-width: 250px; animation: fadeIn 0.3s;';
+            toast.innerHTML = message;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    </script>
+    
+    <style>
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    </style>
+</body>
+</html>

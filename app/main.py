@@ -128,6 +128,34 @@ def general_chat_html():
     return FileResponse("static/general-chat.html", media_type="text/html")
 
 
+@app.get("/floor-planner")
+@app.get("/floor-planner.html")
+def floor_planner_html():
+    """Serve floor planner interface."""
+    return FileResponse(
+        "static/floor-planner.html", 
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+
+@app.get("/plan/{share_token}")
+def shared_plan(share_token: str):
+    """Serve shared floor plan for customer viewing/editing."""
+    # TODO: Validate share token and load project
+    return FileResponse(
+        "static/floor-planner.html", 
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate"
+        }
+    )
+
+
 @app.get("/health")
 def health():
     """Health check endpoint."""
