@@ -6,6 +6,9 @@
     <title>Elektro-Planer - Tali Service</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- PDF Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         :root {
             --primary: #e91e63;
@@ -827,11 +830,17 @@
                 <i class="bi bi-arrow-left"></i>
             </a>
             <h1><i class="bi bi-lightning-charge-fill me-2"></i>Elektro-Planer</h1>
-            <span class="badge bg-light text-dark" id="projectName">Neues Projekt</span>
+            <span class="badge bg-light text-dark" id="projectName" onclick="editProjectName()" style="cursor:pointer;" title="Klicken zum Bearbeiten">Neues Projekt</span>
+            <select id="customerSelect" class="form-select form-select-sm" style="width:200px;background:#fff2;color:white;border:1px solid #fff5;" onchange="selectCustomer()">
+                <option value="">-- Kunde wählen --</option>
+            </select>
         </div>
         <div class="header-actions">
             <button onclick="showListsPanel()"><i class="bi bi-list-ul"></i> Listen</button>
             <button onclick="showShareModal()"><i class="bi bi-share"></i> Teilen</button>
+            <button onclick="exportPDF()" style="background: #17a2b8;">
+                <i class="bi bi-file-pdf"></i> PDF
+            </button>
             <button onclick="generateQuotation()" class="btn-success" style="background: #28a745;">
                 <i class="bi bi-file-text"></i> Angebot erstellen
             </button>
@@ -1377,50 +1386,67 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="shareEnabled">
+                        <input class="form-check-input" type="checkbox" id="shareEnabled" onchange="toggleShare()">
                         <label class="form-check-label" for="shareEnabled">
-                            Kundenbearbeitung freigeben
+                            <strong>Kundenbearbeitung freigeben</strong>
                         </label>
                     </div>
                     
                     <div id="shareOptions" style="display:none;">
-                        <h6 class="mb-3">Berechtigungen:</h6>
+                        <div class="alert alert-info py-2" style="background:#17a2b8;border:none;">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Ihr Kunde kann den Plan ansehen und bearbeiten
+                        </div>
+                        
+                        <h6 class="mb-3 mt-3">Berechtigungen:</h6>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" id="permView" checked disabled>
-                            <label class="form-check-label" for="permView">Ansehen</label>
+                            <label class="form-check-label" for="permView">
+                                <i class="bi bi-eye me-2"></i>Plan ansehen
+                            </label>
                         </div>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" id="permAdd" checked>
-                            <label class="form-check-label" for="permAdd">Elemente hinzufügen</label>
+                            <label class="form-check-label" for="permAdd">
+                                <i class="bi bi-plus-circle me-2"></i>Elemente hinzufügen
+                            </label>
                         </div>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" id="permMove" checked>
-                            <label class="form-check-label" for="permMove">Elemente verschieben</label>
+                            <label class="form-check-label" for="permMove">
+                                <i class="bi bi-arrows-move me-2"></i>Elemente verschieben
+                            </label>
                         </div>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" id="permDelete">
-                            <label class="form-check-label" for="permDelete">Elemente löschen</label>
+                            <label class="form-check-label" for="permDelete">
+                                <i class="bi bi-trash me-2 text-danger"></i>Elemente löschen
+                            </label>
                         </div>
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" id="permComment" checked>
-                            <label class="form-check-label" for="permComment">Kommentare</label>
+                            <label class="form-check-label" for="permComment">
+                                <i class="bi bi-chat-dots me-2"></i>Kommentare hinterlassen
+                            </label>
                         </div>
                         
-                        <label class="form-label">Teilen-Link:</label>
-                        <div class="share-link-box">
-                            <input type="text" id="shareLink" readonly value="https://tali-service-agent.onrender.com/plan/abc123">
-                            <button class="btn btn-primary" onclick="copyShareLink()">
-                                <i class="bi bi-clipboard"></i>
-                            </button>
-                        </div>
-                        
-                        <div class="mt-3 d-flex gap-2">
-                            <button class="btn btn-outline-light flex-fill" onclick="sendByEmail()">
-                                <i class="bi bi-envelope"></i> E-Mail
-                            </button>
-                            <button class="btn btn-success flex-fill" onclick="sendByWhatsApp()">
-                                <i class="bi bi-whatsapp"></i> WhatsApp
-                            </button>
+                        <div id="shareLinkContainer" style="display:none;">
+                            <label class="form-label"><i class="bi bi-link-45deg me-1"></i>Teilen-Link:</label>
+                            <div class="share-link-box">
+                                <input type="text" id="shareLink" readonly value="">
+                                <button class="btn btn-primary" onclick="copyShareLink()" title="Kopieren">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="mt-3 d-flex gap-2">
+                                <button class="btn btn-outline-light flex-fill" onclick="sendByEmail()">
+                                    <i class="bi bi-envelope me-1"></i> E-Mail
+                                </button>
+                                <button class="btn btn-success flex-fill" onclick="sendByWhatsApp()">
+                                    <i class="bi bi-whatsapp me-1"></i> WhatsApp
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1453,6 +1479,8 @@
             // Project tracking
             currentProjectId: null,
             currentFloorId: null,
+            selectedCustomerId: null,
+            selectedCustomerLexwareId: null,
             // Grid settings
             gridEnabled: true,
             snapToGrid: false,  // Disabled for free positioning
@@ -1918,6 +1946,7 @@
             initUpload();
             initTabs();
             initShareModal();
+            loadCustomers();
             
             // Check if project ID in URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -1926,6 +1955,49 @@
                 loadProject(projectId);
             }
         });
+        
+        // =============================================
+        // CUSTOMERS
+        // =============================================
+        async function loadCustomers() {
+            try {
+                const response = await fetch('/api/customers');
+                if (response.ok) {
+                    const customers = await response.json();
+                    const select = document.getElementById('customerSelect');
+                    customers.forEach(c => {
+                        const option = document.createElement('option');
+                        option.value = c.id;
+                        option.dataset.lexwareId = c.lexware_id;
+                        option.textContent = c.name + (c.city ? ` (${c.city})` : '');
+                        select.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading customers:', e);
+            }
+        }
+        
+        function selectCustomer() {
+            const select = document.getElementById('customerSelect');
+            const option = select.options[select.selectedIndex];
+            if (option && option.value) {
+                state.selectedCustomerId = parseInt(option.value);
+                state.selectedCustomerLexwareId = option.dataset.lexwareId;
+                showToast(`Kunde "${option.textContent}" ausgewählt`, 'info');
+            } else {
+                state.selectedCustomerId = null;
+                state.selectedCustomerLexwareId = null;
+            }
+        }
+        
+        function editProjectName() {
+            const current = document.getElementById('projectName').textContent;
+            const newName = prompt('Projektname:', current);
+            if (newName && newName.trim()) {
+                document.getElementById('projectName').textContent = newName.trim();
+            }
+        }
         
         // =============================================
         // TOOLBAR
@@ -3179,8 +3251,63 @@
             });
         }
         
-        function showShareModal() {
+        async function showShareModal() {
+            if (!state.currentProjectId) {
+                // Save project first
+                await saveProject();
+                if (!state.currentProjectId) {
+                    showToast('Projekt muss zuerst gespeichert werden!', 'warning');
+                    return;
+                }
+            }
             new bootstrap.Modal(document.getElementById('shareModal')).show();
+        }
+        
+        async function toggleShare() {
+            const enabled = document.getElementById('shareEnabled').checked;
+            const shareOptions = document.getElementById('shareOptions');
+            
+            if (enabled) {
+                shareOptions.style.display = 'block';
+                
+                // Enable sharing via API
+                try {
+                    const response = await fetch(`/api/floor-planner/projects/${state.currentProjectId}/share`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            can_add: document.getElementById('permAdd')?.checked ?? true,
+                            can_move: document.getElementById('permMove')?.checked ?? true,
+                            can_delete: document.getElementById('permDelete')?.checked ?? false,
+                            can_comment: document.getElementById('permComment')?.checked ?? true
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.share_token) {
+                        const shareUrl = window.location.origin + '/floor-planner-share.html?token=' + result.share_token;
+                        document.getElementById('shareLink').value = shareUrl;
+                        document.getElementById('shareLinkContainer').style.display = 'block';
+                        showToast('Freigabe-Link erstellt!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Share error:', error);
+                    showToast('Fehler beim Erstellen des Freigabe-Links', 'warning');
+                }
+            } else {
+                shareOptions.style.display = 'none';
+                document.getElementById('shareLinkContainer').style.display = 'none';
+                
+                // Disable sharing
+                try {
+                    await fetch(`/api/floor-planner/projects/${state.currentProjectId}/share`, {
+                        method: 'DELETE'
+                    });
+                    showToast('Freigabe deaktiviert', 'info');
+                } catch (error) {
+                    console.error('Disable share error:', error);
+                }
+            }
         }
         
         function copyShareLink() {
@@ -3191,14 +3318,16 @@
         
         function sendByEmail() {
             const link = document.getElementById('shareLink').value;
-            const subject = encodeURIComponent('Ihre Elektroplanung - Tali Service');
-            const body = encodeURIComponent(`Guten Tag,\n\nhier ist der Link zu Ihrer Elektroplanung:\n${link}\n\nSie können dort Ihre Wünsche eintragen.\n\nMit freundlichen Grüßen\nTali Service`);
+            const projectName = document.getElementById('projectName').textContent;
+            const subject = encodeURIComponent(`Ihre Elektroplanung: ${projectName} - Tali Service`);
+            const body = encodeURIComponent(`Guten Tag,\n\nhier ist der Link zu Ihrer Elektroplanung "${projectName}":\n\n${link}\n\nSie können dort:\n✓ Den Plan ansehen\n✓ Steckdosen/Schalter hinzufügen\n✓ Positionen anpassen\n✓ Kommentare hinterlassen\n\nMit freundlichen Grüßen\nTali Service`);
             window.open(`mailto:?subject=${subject}&body=${body}`);
         }
         
         function sendByWhatsApp() {
             const link = document.getElementById('shareLink').value;
-            const text = encodeURIComponent(`Hier ist der Link zu Ihrer Elektroplanung: ${link}`);
+            const projectName = document.getElementById('projectName').textContent;
+            const text = encodeURIComponent(`Ihre Elektroplanung "${projectName}":\n${link}\n\nSie können dort Ihre Wünsche direkt eintragen.`);
             window.open(`https://wa.me/?text=${text}`);
         }
         
@@ -3449,42 +3578,161 @@
                 return;
             }
             
-            // Group elements for quotation
-            const items = {};
+            // Show quotation modal
+            showQuotationModal();
+        }
+        
+        async function showQuotationModal() {
+            // Load customers for selection
+            let customersHtml = '<option value="">-- Kunde auswählen --</option>';
+            try {
+                const response = await fetch('/api/customers');
+                if (response.ok) {
+                    const customers = await response.json();
+                    customers.forEach(c => {
+                        customersHtml += `<option value="${c.lexware_id}">${c.name}${c.city ? ' (' + c.city + ')' : ''}</option>`;
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading customers:', e);
+            }
+            
+            // Calculate totals
+            const positions = {};
             state.elements.forEach(el => {
-                if (!items[el.type]) {
-                    items[el.type] = {
-                        name: el.name,
-                        quantity: 0,
-                        unit_price: el.price,
-                        unit: 'Stück'
+                const config = ELEMENT_CONFIG[el.type] || {};
+                if (!positions[el.type]) {
+                    positions[el.type] = { 
+                        name: (config.name || el.type) + ' anschließen', 
+                        count: 0, 
+                        price: config.price || 0 
                     };
                 }
-                items[el.type].quantity++;
+                positions[el.type].count++;
             });
             
-            // Add Baustelleneinrichtung
-            const positions = [
-                { name: 'Baustelleneinrichtung Elektro', quantity: 1, unit_price: 119, unit: 'Pauschale' },
-                ...Object.values(items)
-            ];
+            let totalNet = 119; // Baustelleneinrichtung
+            Object.values(positions).forEach(p => totalNet += p.count * p.price);
+            totalNet += 120; // Prüfprotokoll
             
-            const total = positions.reduce((sum, p) => sum + p.quantity * p.unit_price, 0);
+            const modalHtml = `
+                <div class="modal fade show" style="display:block;background:rgba(0,0,0,0.7);" id="quotationModal">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content bg-dark text-white">
+                            <div class="modal-header" style="background:#28a745;border:none;">
+                                <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>Angebot erstellen</h5>
+                                <button type="button" class="btn-close btn-close-white" onclick="closeQuotationModal()"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Kunde auswählen *</label>
+                                    <select class="form-select bg-dark text-white border-secondary" id="quotationCustomer">
+                                        ${customersHtml}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Projekt</label>
+                                    <input type="text" class="form-control bg-dark text-white border-secondary" 
+                                           value="${document.getElementById('projectName').textContent}" readonly>
+                                </div>
+                                
+                                <h6 class="mt-4 mb-3">Positionen:</h6>
+                                <table class="table table-dark table-sm">
+                                    <thead>
+                                        <tr><th>Bezeichnung</th><th>Menge</th><th>EP</th><th>GP</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Baustelleneinrichtung Elektro</td>
+                                            <td>1</td>
+                                            <td>119,00 €</td>
+                                            <td>119,00 €</td>
+                                        </tr>
+                                        ${Object.entries(positions).map(([type, p]) => `
+                                            <tr>
+                                                <td>${p.name}</td>
+                                                <td>${p.count}</td>
+                                                <td>${p.price.toFixed(2)} €</td>
+                                                <td>${(p.count * p.price).toFixed(2)} €</td>
+                                            </tr>
+                                        `).join('')}
+                                        <tr>
+                                            <td>Prüfprotokoll nach DIN VDE</td>
+                                            <td>1</td>
+                                            <td>120,00 €</td>
+                                            <td>120,00 €</td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="fw-bold">
+                                            <td colspan="3">Netto</td>
+                                            <td>${totalNet.toFixed(2)} €</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="3">+ 19% MwSt</td>
+                                            <td>${(totalNet * 0.19).toFixed(2)} €</td>
+                                        </tr>
+                                        <tr class="fw-bold" style="font-size:1.1em;background:#28a745;">
+                                            <td colspan="3">Brutto</td>
+                                            <td>${(totalNet * 1.19).toFixed(2)} €</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <div class="modal-footer border-secondary">
+                                <button type="button" class="btn btn-secondary" onclick="closeQuotationModal()">Abbrechen</button>
+                                <button type="button" class="btn btn-success" onclick="submitQuotation()">
+                                    <i class="bi bi-send me-2"></i>In Lexware erstellen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
             
-            // Show summary
-            const summary = positions.map(p => 
-                `${p.quantity}x ${p.name} = ${p.quantity * p.unit_price}€`
-            ).join('\n');
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        function closeQuotationModal() {
+            document.getElementById('quotationModal')?.remove();
+        }
+        
+        async function submitQuotation() {
+            const customerId = document.getElementById('quotationCustomer').value;
             
-            if (confirm(`Angebot erstellen?\n\n${summary}\n\nGESAMT: ${total}€ netto`)) {
-                showToast('Angebot wird erstellt...', 'info');
+            if (!customerId) {
+                showToast('Bitte wählen Sie einen Kunden aus!', 'warning');
+                return;
+            }
+            
+            if (!state.currentProjectId) {
+                // Save project first
+                await saveProject();
+                if (!state.currentProjectId) {
+                    showToast('Projekt muss zuerst gespeichert werden!', 'warning');
+                    return;
+                }
+            }
+            
+            showToast('Angebot wird in Lexware erstellt...', 'info');
+            
+            try {
+                const response = await fetch(`/api/floor-planner/projects/${state.currentProjectId}/create-quotation?customer_id=${customerId}`, {
+                    method: 'POST'
+                });
                 
-                // TODO: Call API to create quotation in Lexware
-                // await fetch('/api/quotations', { ... });
+                const result = await response.json();
                 
-                setTimeout(() => {
-                    showToast('Angebot erfolgreich erstellt!', 'success');
-                }, 1500);
+                if (result.success) {
+                    closeQuotationModal();
+                    showToast(`✅ ${result.message}`, 'success');
+                } else {
+                    showToast(`❌ ${result.message || result.error}`, 'warning');
+                }
+            } catch (error) {
+                console.error('Quotation error:', error);
+                showToast('Fehler beim Erstellen des Angebots: ' + error.message, 'warning');
             }
         }
         
@@ -3509,6 +3757,277 @@
                 toast.style.animation = 'fadeOut 0.3s';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+        }
+        
+        // =============================================
+        // PDF EXPORT
+        // =============================================
+        async function exportPDF() {
+            showToast('PDF wird erstellt...', 'info');
+            
+            const { jsPDF } = window.jspdf;
+            const projectName = document.getElementById('projectName').textContent;
+            const floorName = document.getElementById('floorSelect')?.value || 'EG';
+            
+            // Create PDF (A4 landscape for floor plans)
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+            
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            
+            // Header
+            pdf.setFillColor(233, 30, 99); // Primary color
+            pdf.rect(0, 0, pageWidth, 20, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(16);
+            pdf.text('ELEKTRO-PLANER', 10, 13);
+            pdf.setFontSize(10);
+            pdf.text(`Projekt: ${projectName} | Stockwerk: ${floorName}`, pageWidth - 10, 13, { align: 'right' });
+            
+            // Date
+            pdf.setFontSize(8);
+            pdf.text(`Erstellt: ${new Date().toLocaleDateString('de-DE')}`, pageWidth - 10, 7, { align: 'right' });
+            
+            // Reset text color
+            pdf.setTextColor(0, 0, 0);
+            
+            // Capture canvas as image
+            const canvasImage = canvas.toDataURL('image/png');
+            
+            // Calculate dimensions to fit canvas in PDF
+            const canvasAspect = canvas.width / canvas.height;
+            const maxWidth = pageWidth - 20;
+            const maxHeight = pageHeight - 70; // Leave room for header and footer
+            
+            let imgWidth = maxWidth;
+            let imgHeight = imgWidth / canvasAspect;
+            
+            if (imgHeight > maxHeight) {
+                imgHeight = maxHeight;
+                imgWidth = imgHeight * canvasAspect;
+            }
+            
+            const imgX = (pageWidth - imgWidth) / 2;
+            const imgY = 25;
+            
+            // Add floor plan image
+            pdf.addImage(canvasImage, 'PNG', imgX, imgY, imgWidth, imgHeight);
+            
+            // Border around image
+            pdf.setDrawColor(200);
+            pdf.rect(imgX, imgY, imgWidth, imgHeight);
+            
+            // Element Legend
+            const legendY = imgY + imgHeight + 5;
+            pdf.setFontSize(10);
+            pdf.setFont(undefined, 'bold');
+            pdf.text('Elementliste:', 10, legendY);
+            pdf.setFont(undefined, 'normal');
+            pdf.setFontSize(8);
+            
+            // Count elements by type
+            const counts = {};
+            state.elements.forEach(el => {
+                const config = ELEMENT_CONFIG[el.type] || {};
+                const name = config.name || el.type;
+                if (!counts[name]) counts[name] = 0;
+                counts[name]++;
+            });
+            
+            let legendX = 10;
+            let legendLine = legendY + 5;
+            Object.entries(counts).forEach(([name, count]) => {
+                const text = `${count}x ${name}`;
+                pdf.text(text, legendX, legendLine);
+                legendX += pdf.getTextWidth(text) + 10;
+                if (legendX > pageWidth - 50) {
+                    legendX = 10;
+                    legendLine += 4;
+                }
+            });
+            
+            // Footer
+            pdf.setFontSize(8);
+            pdf.setTextColor(128);
+            pdf.text('Erstellt mit Tali Service Elektro-Planer | www.tali-service.de', pageWidth / 2, pageHeight - 5, { align: 'center' });
+            
+            // ==========================================
+            // PAGE 2: Element List
+            // ==========================================
+            if (state.elements.length > 0) {
+                pdf.addPage();
+                
+                // Header
+                pdf.setFillColor(233, 30, 99);
+                pdf.rect(0, 0, pageWidth, 15, 'F');
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFontSize(12);
+                pdf.text('ELEMENTLISTE', 10, 10);
+                pdf.setFontSize(8);
+                pdf.text(`${projectName} - ${floorName}`, pageWidth - 10, 10, { align: 'right' });
+                
+                // Table header
+                pdf.setTextColor(0);
+                pdf.setFillColor(240, 240, 240);
+                pdf.rect(10, 20, pageWidth - 20, 8, 'F');
+                pdf.setFontSize(9);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Kennung', 15, 25);
+                pdf.text('Element', 45, 25);
+                pdf.text('Kategorie', 100, 25);
+                pdf.text('Position', 150, 25);
+                pdf.text('Höhe', 200, 25);
+                pdf.text('Raum', 230, 25);
+                
+                // Table rows
+                pdf.setFont(undefined, 'normal');
+                pdf.setFontSize(8);
+                let tableY = 33;
+                
+                state.elements.forEach((el, index) => {
+                    const config = ELEMENT_CONFIG[el.type] || {};
+                    
+                    // Find room
+                    let roomName = '-';
+                    for (const room of state.rooms) {
+                        if (el.x >= room.x && el.x <= room.x + room.width &&
+                            el.y >= room.y && el.y <= room.y + room.height) {
+                            roomName = room.name;
+                            break;
+                        }
+                    }
+                    
+                    // Alternate row colors
+                    if (index % 2 === 0) {
+                        pdf.setFillColor(250, 250, 250);
+                        pdf.rect(10, tableY - 4, pageWidth - 20, 6, 'F');
+                    }
+                    
+                    pdf.text(el.code || '-', 15, tableY);
+                    pdf.text(config.name || el.type, 45, tableY);
+                    pdf.text(config.category || '-', 100, tableY);
+                    pdf.text(`X:${Math.round(el.x)} Y:${Math.round(el.y)}`, 150, tableY);
+                    pdf.text(el.height ? `${el.height}cm` : '-', 200, tableY);
+                    pdf.text(roomName, 230, tableY);
+                    
+                    tableY += 6;
+                    
+                    // New page if needed
+                    if (tableY > pageHeight - 20) {
+                        pdf.addPage();
+                        tableY = 25;
+                    }
+                });
+                
+                // Total
+                pdf.setFont(undefined, 'bold');
+                pdf.text(`Gesamt: ${state.elements.length} Elemente`, 15, tableY + 5);
+            }
+            
+            // ==========================================
+            // PAGE 3: Quote Positions (Angebotspositionen)
+            // ==========================================
+            if (state.elements.length > 0) {
+                pdf.addPage();
+                
+                // Header
+                pdf.setFillColor(40, 167, 69); // Green
+                pdf.rect(0, 0, pageWidth, 15, 'F');
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFontSize(12);
+                pdf.text('ANGEBOTSPOSITIONEN', 10, 10);
+                pdf.setFontSize(8);
+                pdf.text(`${projectName}`, pageWidth - 10, 10, { align: 'right' });
+                
+                // Table header
+                pdf.setTextColor(0);
+                pdf.setFillColor(240, 240, 240);
+                pdf.rect(10, 20, pageWidth - 20, 8, 'F');
+                pdf.setFontSize(9);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Pos', 15, 25);
+                pdf.text('Bezeichnung', 30, 25);
+                pdf.text('Menge', 150, 25);
+                pdf.text('Einheit', 175, 25);
+                pdf.text('EP', 205, 25);
+                pdf.text('GP', 240, 25);
+                
+                // Group elements
+                const positions = {};
+                state.elements.forEach(el => {
+                    const config = ELEMENT_CONFIG[el.type] || {};
+                    if (!positions[el.type]) {
+                        positions[el.type] = { 
+                            name: (config.name || el.type) + ' anschließen', 
+                            count: 0, 
+                            price: config.price || 0 
+                        };
+                    }
+                    positions[el.type].count++;
+                });
+                
+                // Build positions array
+                const posArray = [
+                    { name: 'Baustelleneinrichtung Elektro', count: 1, price: 119, unit: 'psch' }
+                ];
+                Object.values(positions).forEach(p => {
+                    posArray.push({ name: p.name, count: p.count, price: p.price, unit: 'Stk' });
+                });
+                posArray.push({ name: 'Prüfprotokoll nach DIN VDE', count: 1, price: 120, unit: 'psch' });
+                
+                // Render positions
+                pdf.setFont(undefined, 'normal');
+                pdf.setFontSize(8);
+                let posY = 33;
+                let totalNet = 0;
+                
+                posArray.forEach((pos, index) => {
+                    const gp = pos.count * pos.price;
+                    totalNet += gp;
+                    
+                    if (index % 2 === 0) {
+                        pdf.setFillColor(250, 250, 250);
+                        pdf.rect(10, posY - 4, pageWidth - 20, 6, 'F');
+                    }
+                    
+                    pdf.text(`${index + 1}`, 15, posY);
+                    pdf.text(pos.name, 30, posY);
+                    pdf.text(`${pos.count}`, 155, posY);
+                    pdf.text(pos.unit, 175, posY);
+                    pdf.text(`${pos.price.toFixed(2)} €`, 200, posY);
+                    pdf.text(`${gp.toFixed(2)} €`, 235, posY);
+                    
+                    posY += 6;
+                });
+                
+                // Totals
+                posY += 5;
+                pdf.setDrawColor(0);
+                pdf.line(10, posY - 3, pageWidth - 10, posY - 3);
+                
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Netto:', 200, posY);
+                pdf.text(`${totalNet.toFixed(2)} €`, 235, posY);
+                
+                posY += 6;
+                pdf.setFont(undefined, 'normal');
+                pdf.text('+ 19% MwSt:', 200, posY);
+                pdf.text(`${(totalNet * 0.19).toFixed(2)} €`, 235, posY);
+                
+                posY += 6;
+                pdf.setFont(undefined, 'bold');
+                pdf.setFontSize(10);
+                pdf.text('BRUTTO:', 200, posY);
+                pdf.text(`${(totalNet * 1.19).toFixed(2)} €`, 235, posY);
+            }
+            
+            // Save PDF
+            pdf.save(`${projectName.replace(/\s+/g, '_')}_${floorName}_${Date.now()}.pdf`);
+            showToast('PDF erfolgreich erstellt!', 'success');
         }
         
         // PDF.js worker

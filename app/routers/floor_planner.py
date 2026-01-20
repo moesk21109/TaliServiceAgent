@@ -711,3 +711,101 @@ async def get_quote_positions(project_id: int, session: Session = Depends(get_se
         "vat": round(vat, 2),
         "total_gross": round(total_gross, 2)
     }
+
+
+# ==========================================
+# LEXWARE INTEGRATION
+# ==========================================
+
+@router.post("/projects/{project_id}/create-quotation")
+async def create_quotation_from_project(
+    project_id: int,
+    customer_id: str,  # Lexware customer ID
+    session: Session = Depends(get_session)
+):
+    """Create Lexware quotation from project elements."""
+    from ..lexware_client import LexwareClient
+    
+    # Get project
+    project = session.get(FloorProject, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Get floor
+    floor = session.exec(
+        select(ProjectFloor).where(ProjectFloor.project_id == project_id)
+    ).first()
+    
+    if not floor:
+        raise HTTPException(status_code=404, detail="No floor found for project")
+    
+    # Get elements
+    elements = session.exec(select(ProjectElement).where(ProjectElement.floor_id == floor.id)).all()
+    
+    if not elements:
+        raise HTTPException(status_code=400, detail="No elements in project")
+    
+    # Count by type
+    counts = {}
+    for el in elements:
+        if el.element_type not in counts:
+            counts[el.element_type] = 0
+        counts[el.element_type] += 1
+    
+    # Build Lexware items
+    items = []
+    
+    # Baustelleneinrichtung
+    items.append({
+        "name": "Baustelleneinrichtung Elektro",
+        "description": f"Elektroinstallation {project.name}",
+        "quantity": 1,
+        "unit": "Pauschale",
+        "unitPrice": 119.00
+    })
+    
+    # Element positions
+    for el_type, count in counts.items():
+        if el_type in ELEMENT_LABOR:
+            labor = ELEMENT_LABOR[el_type]
+            items.append({
+                "name": labor["name"],
+                "description": f"{count}x {labor['name']}",
+                "quantity": count,
+                "unit": labor["unit"],
+                "unitPrice": labor["price"]
+            })
+    
+    # Prüfprotokoll
+    items.append({
+        "name": "Prüfprotokoll nach DIN VDE 0100",
+        "description": "Erstprüfung der Elektroanlage inkl. Protokoll",
+        "quantity": 1,
+        "unit": "Pauschale",
+        "unitPrice": 120.00
+    })
+    
+    # Create quotation via Lexware
+    lexware = LexwareClient()
+    result = lexware.create_voucher({
+        "type": "angebot",
+        "customer_id": customer_id,
+        "items": items,
+        "title": f"Elektroinstallation {project.name}",
+        "introduction": f"Angebot für Elektroinstallation - {project.name}\nStockwerk: {floor.name}\nGesamt: {len(elements)} Elemente"
+    })
+    
+    if result and result.get("success"):
+        return {
+            "success": True,
+            "quotation_id": result.get("id"),
+            "message": f"Angebot erfolgreich in Lexware erstellt! ID: {result.get('id')}",
+            "items_count": len(items),
+            "elements_count": len(elements)
+        }
+    else:
+        return {
+            "success": False,
+            "error": result.get("error") if result else "Unknown error",
+            "message": "Angebot konnte nicht erstellt werden"
+        }
