@@ -1792,50 +1792,133 @@
         function drawHeightIndicator(ctx, x, y, height, code, isSelected) {
             if (height === undefined || height === null) return;
             
-            // Height indicator line (dotted, orange/red)
-            ctx.save();
-            ctx.strokeStyle = '#ff6b35';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([3, 3]);
-            
-            ctx.beginPath();
-            ctx.moveTo(x, y + SYMBOL_SIZE/2 + 5);
-            ctx.lineTo(x, y + SYMBOL_SIZE/2 + 35);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            
-            // Height value
-            ctx.font = 'bold 12px Arial';
-            ctx.fillStyle = '#ff6b35';
-            ctx.textAlign = 'center';
-            ctx.fillText(height.toString(), x, y + SYMBOL_SIZE/2 + 48);
-            
-            ctx.restore();
-        }
-        
-        function drawCodeBadge(ctx, x, y, code, isSelected) {
-            // Code badge (red background)
+            // Height badge (red/pink rounded rectangle) - like JetPlan
             ctx.save();
             
-            const badgeX = x + SYMBOL_SIZE/2 + 5;
-            const badgeY = y;
-            const text = code;
+            const badgeX = x + SYMBOL_SIZE/2 + 2;
+            const badgeY = y + SYMBOL_SIZE/2 - 8;
+            const text = height.toString();
             
-            ctx.font = 'bold 11px Arial';
+            ctx.font = 'bold 10px Arial';
             const textWidth = ctx.measureText(text).width;
-            const padding = 6;
+            const padding = 4;
             
-            // Badge background
-            ctx.fillStyle = isSelected ? '#0099ff' : '#e91e63';
+            // Badge background (red/coral)
+            ctx.fillStyle = isSelected ? '#0099ff' : '#e74c3c';
             ctx.beginPath();
-            ctx.roundRect(badgeX, badgeY - 10, textWidth + padding * 2, 20, 4);
+            ctx.roundRect(badgeX, badgeY, textWidth + padding * 2, 16, 3);
             ctx.fill();
             
             // Badge text
             ctx.fillStyle = 'white';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(text, badgeX + padding, badgeY);
+            ctx.fillText(text, badgeX + padding, badgeY + 8);
+            
+            ctx.restore();
+        }
+        
+        function drawPositioningCross(ctx, x, y, isSelected) {
+            // Draw positioning cross/target below symbol for precise line placement
+            ctx.save();
+            
+            const crossY = y + SYMBOL_SIZE/2 + 18;
+            const crossSize = 12;
+            
+            ctx.strokeStyle = isSelected ? '#0099ff' : '#666';
+            ctx.lineWidth = 1.5;
+            ctx.fillStyle = 'white';
+            
+            // Box/diamond shape
+            ctx.beginPath();
+            ctx.moveTo(x, crossY - crossSize/2);
+            ctx.lineTo(x + crossSize/2, crossY);
+            ctx.lineTo(x, crossY + crossSize/2);
+            ctx.lineTo(x - crossSize/2, crossY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Cross inside
+            ctx.beginPath();
+            ctx.moveTo(x - crossSize/3, crossY);
+            ctx.lineTo(x + crossSize/3, crossY);
+            ctx.moveTo(x, crossY - crossSize/3);
+            ctx.lineTo(x, crossY + crossSize/3);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function drawSnapPoints(ctx, x, y, isSelected) {
+            // Draw snap points around element (like in the image - circles around)
+            if (!isSelected) return;
+            
+            ctx.save();
+            ctx.strokeStyle = '#0099ff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            
+            // Outer circle (connection range)
+            ctx.beginPath();
+            ctx.arc(x, y, SYMBOL_SIZE + 25, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Snap points at cardinal directions
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = '#0099ff';
+            ctx.lineWidth = 2;
+            
+            const points = [
+                { x: x, y: y - SYMBOL_SIZE - 15 },       // Top
+                { x: x + SYMBOL_SIZE + 15, y: y },      // Right  
+                { x: x, y: y + SYMBOL_SIZE + 15 },      // Bottom
+                { x: x - SYMBOL_SIZE - 15, y: y }       // Left
+            ];
+            
+            points.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Small diamond inside
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y - 3);
+                ctx.lineTo(p.x + 3, p.y);
+                ctx.lineTo(p.x, p.y + 3);
+                ctx.lineTo(p.x - 3, p.y);
+                ctx.closePath();
+                ctx.stroke();
+            });
+            
+            ctx.restore();
+        }
+        
+        function drawCodeBadge(ctx, x, y, code, isSelected) {
+            // Code badge (top-left corner, small and discrete)
+            ctx.save();
+            
+            const badgeX = x - SYMBOL_SIZE/2 - 2;
+            const badgeY = y - SYMBOL_SIZE/2 - 5;
+            const text = code;
+            
+            ctx.font = 'bold 9px Arial';
+            const textWidth = ctx.measureText(text).width;
+            const padding = 4;
+            
+            // Badge background
+            ctx.fillStyle = isSelected ? '#0099ff' : '#e91e63';
+            ctx.beginPath();
+            ctx.roundRect(badgeX - textWidth - padding, badgeY - 6, textWidth + padding * 2, 14, 3);
+            ctx.fill();
+            
+            // Badge text
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, badgeX, badgeY + 1);
             
             ctx.restore();
         }
@@ -2672,11 +2755,17 @@
                 const isSelected = state.selectedElement?.id === el.id;
                 const config = ELEMENT_CONFIG[el.type];
                 
+                // Draw snap points for selected element (behind the symbol)
+                drawSnapPoints(ctx, el.x, el.y, isSelected);
+                
                 // Use specific draw function or default
                 const drawFn = SYMBOL_DRAW[el.type] || SYMBOL_DRAW.default;
                 drawFn(ctx, el.x, el.y, el.rotation, isSelected, config);
                 
-                // Draw height indicator (orange dotted line + value)
+                // Draw positioning cross below symbol
+                drawPositioningCross(ctx, el.x, el.y, isSelected);
+                
+                // Draw height badge (red badge with number)
                 const height = el.height !== undefined ? el.height : config?.height;
                 if (height !== undefined && height > 0) {
                     drawHeightIndicator(ctx, el.x, el.y, height, el.code, isSelected);
