@@ -110,7 +110,6 @@
             background: #0f0f23;
             position: relative;
             overflow: hidden;
-            padding-bottom: 36px; /* Space for status bar */
         }
         
         #floorCanvas {
@@ -158,20 +157,20 @@
         
         /* Bottom Status Bar */
         .status-bar {
-            position: absolute;
+            position: fixed;
             bottom: 0;
-            left: 0;
-            right: 0;
-            height: 36px;
-            background: linear-gradient(to right, #16213e, #1a1a2e);
-            border-top: 1px solid #333;
+            left: 50px;
+            right: var(--sidebar-width);
+            height: 32px;
+            background: linear-gradient(to right, #0f0f23, #16213e);
+            border-top: 1px solid #444;
             display: flex;
             align-items: center;
             padding: 0 15px;
-            gap: 20px;
-            font-size: 12px;
-            color: #aaa;
-            z-index: 200;
+            gap: 15px;
+            font-size: 11px;
+            color: #ccc;
+            z-index: 1000;
         }
         
         .status-bar .status-section {
