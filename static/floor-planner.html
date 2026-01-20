@@ -253,6 +253,31 @@
             font-size: 1.5rem;
         }
         
+        /* SVG Symbol Styles */
+        .element-item svg {
+            width: 32px;
+            height: 32px;
+            fill: none;
+            stroke: white;
+            stroke-width: 1.5;
+        }
+        
+        .element-item:hover svg {
+            stroke: #fff;
+        }
+        
+        /* Placed elements on canvas - professional look */
+        .canvas-symbol {
+            stroke: #000;
+            stroke-width: 2;
+            fill: white;
+        }
+        
+        .canvas-symbol.selected {
+            stroke: #e91e63;
+            stroke-width: 3;
+        }
+        
         /* Element List View */
         .element-list {
             padding: 10px;
@@ -618,22 +643,51 @@
                 </div>
                 <div class="element-grid" id="gridSteckdosen">
                     <div class="element-item" draggable="true" data-type="steckdose_schuko" data-name="Schuko-Steckdose" title="Schuko-Steckdose">
-                        <span class="element-icon">🔌</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="12" fill="none" stroke="white" stroke-width="2"/>
+                            <path d="M12 20 A8 8 0 0 1 28 20" fill="none" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="steckdose_doppelt" data-name="Doppelsteckdose" title="Doppelsteckdose">
-                        <span class="element-icon">🔌🔌</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="14" cy="20" r="8" fill="none" stroke="white" stroke-width="2"/>
+                            <path d="M8 20 A6 6 0 0 1 20 20" fill="none" stroke="white" stroke-width="2"/>
+                            <circle cx="26" cy="20" r="8" fill="none" stroke="white" stroke-width="2"/>
+                            <path d="M20 20 A6 6 0 0 1 32 20" fill="none" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="steckdose_usb" data-name="Steckdose mit USB" title="Steckdose mit USB">
-                        <span class="element-icon">🔋</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="12" fill="none" stroke="white" stroke-width="2"/>
+                            <path d="M12 20 A8 8 0 0 1 28 20" fill="none" stroke="white" stroke-width="2"/>
+                            <text x="20" y="24" text-anchor="middle" fill="white" font-size="8">USB</text>
+                        </svg>
                     </div>
-                    <div class="element-item" draggable="true" data-type="steckdose_cee16" data-name="CEE 16A" title="CEE 16A rot">
-                        <span class="element-icon" style="color: red;">⚡</span>
+                    <div class="element-item" draggable="true" data-type="steckdose_cee16" data-name="CEE 16A rot" title="CEE 16A rot">
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="12" fill="none" stroke="#ff5252" stroke-width="2"/>
+                            <circle cx="16" cy="16" r="2" fill="#ff5252"/>
+                            <circle cx="24" cy="16" r="2" fill="#ff5252"/>
+                            <circle cx="16" cy="24" r="2" fill="#ff5252"/>
+                            <circle cx="24" cy="24" r="2" fill="#ff5252"/>
+                            <circle cx="20" cy="20" r="2" fill="#ff5252"/>
+                        </svg>
                     </div>
-                    <div class="element-item" draggable="true" data-type="steckdose_cee32" data-name="CEE 32A" title="CEE 32A blau">
-                        <span class="element-icon" style="color: blue;">⚡</span>
+                    <div class="element-item" draggable="true" data-type="steckdose_cee32" data-name="CEE 32A blau" title="CEE 32A blau">
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="12" fill="none" stroke="#2196f3" stroke-width="2"/>
+                            <circle cx="16" cy="16" r="2" fill="#2196f3"/>
+                            <circle cx="24" cy="16" r="2" fill="#2196f3"/>
+                            <circle cx="16" cy="24" r="2" fill="#2196f3"/>
+                            <circle cx="24" cy="24" r="2" fill="#2196f3"/>
+                            <circle cx="20" cy="20" r="2" fill="#2196f3"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="steckdose_boden" data-name="Bodentank" title="Bodentank">
-                        <span class="element-icon">⬜</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="8" y="8" width="24" height="24" fill="none" stroke="white" stroke-width="2"/>
+                            <circle cx="20" cy="20" r="6" fill="none" stroke="white" stroke-width="1.5"/>
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -645,25 +699,50 @@
                 </div>
                 <div class="element-grid" id="gridSchalter">
                     <div class="element-item" draggable="true" data-type="schalter_aus" data-name="Ausschalter" title="Ausschalter">
-                        <span class="element-icon">⚪</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="20" y1="10" x2="20" y2="4" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="schalter_wechsel" data-name="Wechselschalter" title="Wechselschalter">
-                        <span class="element-icon">↔️</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="14" y1="10" x2="14" y2="4" stroke="white" stroke-width="2"/>
+                            <line x1="26" y1="10" x2="26" y2="4" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="schalter_kreuz" data-name="Kreuzschalter" title="Kreuzschalter">
-                        <span class="element-icon">✚</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="15" y1="15" x2="25" y2="25" stroke="white" stroke-width="2"/>
+                            <line x1="25" y1="15" x2="15" y2="25" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="schalter_dimmer" data-name="Dimmer" title="Dimmer">
-                        <span class="element-icon">🔆</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <path d="M14 26 L20 14 L26 26" fill="none" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="schalter_taster" data-name="Taster" title="Taster">
-                        <span class="element-icon">⏺️</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <circle cx="20" cy="20" r="4" fill="white"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="schalter_jalousie" data-name="Jalousietaster" title="Jalousietaster">
-                        <span class="element-icon">▤</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="14" y1="16" x2="26" y2="16" stroke="white" stroke-width="1.5"/>
+                            <line x1="14" y1="20" x2="26" y2="20" stroke="white" stroke-width="1.5"/>
+                            <line x1="14" y1="24" x2="26" y2="24" stroke="white" stroke-width="1.5"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="schalter_bewegung" data-name="Bewegungsmelder" title="Bewegungsmelder">
-                        <span class="element-icon">📡</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <path d="M15 20 Q20 10 25 20 Q20 30 15 20" fill="none" stroke="white" stroke-width="1.5"/>
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -675,19 +754,39 @@
                 </div>
                 <div class="element-grid" id="gridLicht">
                     <div class="element-item" draggable="true" data-type="licht_decke" data-name="Deckenauslass" title="Deckenauslass">
-                        <span class="element-icon">💡</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="14" y1="14" x2="26" y2="26" stroke="white" stroke-width="2"/>
+                            <line x1="26" y1="14" x2="14" y2="26" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="licht_wand" data-name="Wandauslass" title="Wandauslass">
-                        <span class="element-icon">🔦</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="14" y1="14" x2="26" y2="26" stroke="white" stroke-width="2"/>
+                            <line x1="26" y1="14" x2="14" y2="26" stroke="white" stroke-width="2"/>
+                            <line x1="20" y1="30" x2="20" y2="36" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="licht_spot" data-name="Einbaustrahler" title="Einbaustrahler">
-                        <span class="element-icon">⭕</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <circle cx="20" cy="20" r="5" fill="none" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="licht_aussen" data-name="Außenleuchte" title="Außenleuchte">
-                        <span class="element-icon">🌙</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="14" y1="14" x2="26" y2="26" stroke="white" stroke-width="2"/>
+                            <line x1="26" y1="14" x2="14" y2="26" stroke="white" stroke-width="2"/>
+                            <rect x="15" y="15" width="10" height="10" fill="none" stroke="white" stroke-width="1"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="licht_notaus" data-name="Notausgangsleuchte" title="Notausgangsleuchte">
-                        <span class="element-icon">🚪</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="8" y="12" width="24" height="16" fill="none" stroke="#4caf50" stroke-width="2"/>
+                            <path d="M16 20 L20 16 L20 18 L24 18 L24 22 L20 22 L20 24 Z" fill="#4caf50"/>
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -699,25 +798,56 @@
                 </div>
                 <div class="element-grid" id="gridAnschluss">
                     <div class="element-item" draggable="true" data-type="anschluss_herd" data-name="Herdanschluss" title="Herdanschluss 400V">
-                        <span class="element-icon">🍳</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="8" y="8" width="24" height="24" fill="none" stroke="white" stroke-width="2"/>
+                            <circle cx="14" cy="14" r="3" fill="none" stroke="white" stroke-width="1.5"/>
+                            <circle cx="26" cy="14" r="3" fill="none" stroke="white" stroke-width="1.5"/>
+                            <circle cx="14" cy="26" r="3" fill="none" stroke="white" stroke-width="1.5"/>
+                            <circle cx="26" cy="26" r="3" fill="none" stroke="white" stroke-width="1.5"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="anschluss_dunst" data-name="Dunstabzug" title="Dunstabzug">
-                        <span class="element-icon">💨</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="10" y="14" width="20" height="12" fill="none" stroke="white" stroke-width="2"/>
+                            <path d="M16 14 L16 8 M20 14 L20 8 M24 14 L24 8" stroke="white" stroke-width="1.5"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="anschluss_spuel" data-name="Spülmaschine" title="Spülmaschine">
-                        <span class="element-icon">🫧</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="10" y="10" width="20" height="20" fill="none" stroke="white" stroke-width="2"/>
+                            <text x="20" y="24" text-anchor="middle" fill="white" font-size="10">SP</text>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="anschluss_wasch" data-name="Waschmaschine" title="Waschmaschine">
-                        <span class="element-icon">🧺</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="10" y="10" width="20" height="20" fill="none" stroke="white" stroke-width="2"/>
+                            <circle cx="20" cy="22" r="6" fill="none" stroke="white" stroke-width="1.5"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="anschluss_tv" data-name="TV-Anschluss" title="TV-Anschluss">
-                        <span class="element-icon">📺</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="10" y="12" width="20" height="14" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="15" y1="26" x2="15" y2="30" stroke="white" stroke-width="2"/>
+                            <line x1="25" y1="26" x2="25" y2="30" stroke="white" stroke-width="2"/>
+                            <line x1="12" y1="30" x2="28" y2="30" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="anschluss_netzwerk" data-name="Netzwerk RJ45" title="Netzwerk RJ45">
-                        <span class="element-icon">🌐</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="10" y="12" width="20" height="16" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="14" y1="16" x2="14" y2="24" stroke="white" stroke-width="1"/>
+                            <line x1="17" y1="16" x2="17" y2="24" stroke="white" stroke-width="1"/>
+                            <line x1="20" y1="16" x2="20" y2="24" stroke="white" stroke-width="1"/>
+                            <line x1="23" y1="16" x2="23" y2="24" stroke="white" stroke-width="1"/>
+                            <line x1="26" y1="16" x2="26" y2="24" stroke="white" stroke-width="1"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="anschluss_telefon" data-name="Telefon TAE" title="Telefon TAE">
-                        <span class="element-icon">☎️</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="12" y="10" width="16" height="20" fill="none" stroke="white" stroke-width="2"/>
+                            <circle cx="20" cy="16" r="3" fill="none" stroke="white" stroke-width="1.5"/>
+                            <rect x="16" y="22" width="8" height="4" fill="none" stroke="white" stroke-width="1"/>
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -729,16 +859,31 @@
                 </div>
                 <div class="element-grid">
                     <div class="element-item" draggable="true" data-type="rauchmelder" data-name="Rauchmelder" title="Rauchmelder">
-                        <span class="element-icon">🔔</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="10" fill="none" stroke="white" stroke-width="2"/>
+                            <circle cx="20" cy="20" r="4" fill="none" stroke="white" stroke-width="1.5"/>
+                            <text x="20" y="36" text-anchor="middle" fill="white" font-size="6">RM</text>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="thermostat" data-name="Thermostat" title="Thermostat">
-                        <span class="element-icon">🌡️</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="12" y="10" width="16" height="20" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="16" y1="24" x2="24" y2="24" stroke="white" stroke-width="1.5"/>
+                            <circle cx="20" cy="16" r="3" fill="none" stroke="white" stroke-width="1"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="tuerklingel" data-name="Türklingel" title="Türklingel">
-                        <span class="element-icon">🔔</span>
+                        <svg viewBox="0 0 40 40">
+                            <circle cx="20" cy="16" r="8" fill="none" stroke="white" stroke-width="2"/>
+                            <path d="M16 24 L20 28 L24 24" fill="none" stroke="white" stroke-width="2"/>
+                        </svg>
                     </div>
                     <div class="element-item" draggable="true" data-type="gegensprech" data-name="Gegensprechanlage" title="Gegensprechanlage">
-                        <span class="element-icon">📞</span>
+                        <svg viewBox="0 0 40 40">
+                            <rect x="12" y="8" width="16" height="24" fill="none" stroke="white" stroke-width="2"/>
+                            <circle cx="20" cy="14" r="3" fill="none" stroke="white" stroke-width="1"/>
+                            <rect x="15" y="20" width="10" height="8" fill="none" stroke="white" stroke-width="1"/>
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -907,24 +1052,196 @@
         
         // Element type to Lexware mapping
         const ELEMENT_CONFIG = {
-            steckdose_schuko: { prefix: 'SD', name: 'Schuko-Steckdose', category: 'Steckdosen', price: 89, icon: '🔌' },
-            steckdose_doppelt: { prefix: 'SD', name: 'Doppelsteckdose', category: 'Steckdosen', price: 109, icon: '🔌🔌' },
-            steckdose_usb: { prefix: 'SD', name: 'Steckdose mit USB', category: 'Steckdosen', price: 119, icon: '🔋' },
-            steckdose_cee16: { prefix: 'CEE', name: 'CEE 16A', category: 'Steckdosen', price: 189, icon: '⚡' },
-            steckdose_cee32: { prefix: 'CEE', name: 'CEE 32A', category: 'Steckdosen', price: 249, icon: '⚡' },
-            schalter_aus: { prefix: 'AS', name: 'Ausschalter', category: 'Schalter', price: 79, icon: '⚪' },
-            schalter_wechsel: { prefix: 'WS', name: 'Wechselschalter', category: 'Schalter', price: 95, icon: '↔️' },
-            schalter_kreuz: { prefix: 'KS', name: 'Kreuzschalter', category: 'Schalter', price: 105, icon: '✚' },
-            schalter_dimmer: { prefix: 'DI', name: 'Dimmer', category: 'Schalter', price: 149, icon: '🔆' },
-            schalter_taster: { prefix: 'TA', name: 'Taster', category: 'Schalter', price: 85, icon: '⏺️' },
-            schalter_bewegung: { prefix: 'BM', name: 'Bewegungsmelder', category: 'Schalter', price: 129, icon: '📡' },
-            licht_decke: { prefix: 'LA', name: 'Deckenauslass', category: 'Beleuchtung', price: 75, icon: '💡' },
-            licht_wand: { prefix: 'LA', name: 'Wandauslass', category: 'Beleuchtung', price: 75, icon: '🔦' },
-            licht_spot: { prefix: 'SP', name: 'Einbaustrahler', category: 'Beleuchtung', price: 95, icon: '⭕' },
-            anschluss_herd: { prefix: 'HA', name: 'Herdanschluss', category: 'Anschlüsse', price: 189, icon: '🍳' },
-            anschluss_netzwerk: { prefix: 'NW', name: 'Netzwerk RJ45', category: 'Anschlüsse', price: 85, icon: '🌐' },
-            anschluss_tv: { prefix: 'TV', name: 'TV-Anschluss', category: 'Anschlüsse', price: 79, icon: '📺' },
-            rauchmelder: { prefix: 'RM', name: 'Rauchmelder', category: 'Sonstiges', price: 65, icon: '🔔' },
+            steckdose_schuko: { prefix: 'SD', name: 'Schuko-Steckdose', category: 'Steckdosen', price: 89, color: '#000' },
+            steckdose_doppelt: { prefix: 'SD', name: 'Doppelsteckdose', category: 'Steckdosen', price: 109, color: '#000' },
+            steckdose_usb: { prefix: 'SD', name: 'Steckdose mit USB', category: 'Steckdosen', price: 119, color: '#000' },
+            steckdose_cee16: { prefix: 'CEE', name: 'CEE 16A', category: 'Steckdosen', price: 189, color: '#ff5252' },
+            steckdose_cee32: { prefix: 'CEE', name: 'CEE 32A', category: 'Steckdosen', price: 249, color: '#2196f3' },
+            steckdose_boden: { prefix: 'BT', name: 'Bodentank', category: 'Steckdosen', price: 289, color: '#000' },
+            schalter_aus: { prefix: 'AS', name: 'Ausschalter', category: 'Schalter', price: 79, color: '#000' },
+            schalter_wechsel: { prefix: 'WS', name: 'Wechselschalter', category: 'Schalter', price: 95, color: '#000' },
+            schalter_kreuz: { prefix: 'KS', name: 'Kreuzschalter', category: 'Schalter', price: 105, color: '#000' },
+            schalter_dimmer: { prefix: 'DI', name: 'Dimmer', category: 'Schalter', price: 149, color: '#000' },
+            schalter_taster: { prefix: 'TA', name: 'Taster', category: 'Schalter', price: 85, color: '#000' },
+            schalter_jalousie: { prefix: 'JT', name: 'Jalousietaster', category: 'Schalter', price: 95, color: '#000' },
+            schalter_bewegung: { prefix: 'BM', name: 'Bewegungsmelder', category: 'Schalter', price: 129, color: '#000' },
+            licht_decke: { prefix: 'LA', name: 'Deckenauslass', category: 'Beleuchtung', price: 75, color: '#000' },
+            licht_wand: { prefix: 'WA', name: 'Wandauslass', category: 'Beleuchtung', price: 75, color: '#000' },
+            licht_spot: { prefix: 'SP', name: 'Einbaustrahler', category: 'Beleuchtung', price: 95, color: '#000' },
+            licht_aussen: { prefix: 'AL', name: 'Außenleuchte', category: 'Beleuchtung', price: 110, color: '#000' },
+            licht_notaus: { prefix: 'NA', name: 'Notausgangsleuchte', category: 'Beleuchtung', price: 180, color: '#4caf50' },
+            anschluss_herd: { prefix: 'HA', name: 'Herdanschluss', category: 'Anschlüsse', price: 189, color: '#000' },
+            anschluss_dunst: { prefix: 'DA', name: 'Dunstabzug', category: 'Anschlüsse', price: 95, color: '#000' },
+            anschluss_spuel: { prefix: 'SPA', name: 'Spülmaschine', category: 'Anschlüsse', price: 95, color: '#000' },
+            anschluss_wasch: { prefix: 'WMA', name: 'Waschmaschine', category: 'Anschlüsse', price: 95, color: '#000' },
+            anschluss_netzwerk: { prefix: 'NW', name: 'Netzwerk RJ45', category: 'Anschlüsse', price: 85, color: '#000' },
+            anschluss_tv: { prefix: 'TV', name: 'TV-Anschluss', category: 'Anschlüsse', price: 79, color: '#000' },
+            anschluss_telefon: { prefix: 'TEL', name: 'Telefon TAE', category: 'Anschlüsse', price: 79, color: '#000' },
+            rauchmelder: { prefix: 'RM', name: 'Rauchmelder', category: 'Sonstiges', price: 65, color: '#ff5252' },
+            thermostat: { prefix: 'TH', name: 'Thermostat', category: 'Sonstiges', price: 120, color: '#000' },
+            tuerklingel: { prefix: 'TK', name: 'Türklingel', category: 'Sonstiges', price: 85, color: '#000' },
+            gegensprech: { prefix: 'GS', name: 'Gegensprechanlage', category: 'Sonstiges', price: 180, color: '#000' },
+        };
+        
+        // Symbol drawing functions for canvas
+        const SYMBOL_DRAW = {
+            steckdose_schuko: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.stroke();
+                // Half circle (outlet symbol)
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, 0, Math.PI);
+                ctx.stroke();
+                // Direction arrow
+                ctx.beginPath();
+                ctx.moveTo(0, -12);
+                ctx.lineTo(0, -20);
+                ctx.lineTo(-4, -16);
+                ctx.moveTo(0, -20);
+                ctx.lineTo(4, -16);
+                ctx.stroke();
+                ctx.restore();
+            },
+            steckdose_doppelt: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                // Two circles
+                [-8, 8].forEach(ox => {
+                    ctx.beginPath();
+                    ctx.arc(ox, 0, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(ox, 0, 5, 0, Math.PI);
+                    ctx.stroke();
+                });
+                // Arrow
+                ctx.beginPath();
+                ctx.moveTo(0, -10);
+                ctx.lineTo(0, -18);
+                ctx.lineTo(-4, -14);
+                ctx.moveTo(0, -18);
+                ctx.lineTo(4, -14);
+                ctx.stroke();
+                ctx.restore();
+            },
+            schalter_aus: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // Line up
+                ctx.beginPath();
+                ctx.moveTo(0, -10);
+                ctx.lineTo(0, -18);
+                ctx.stroke();
+                ctx.restore();
+            },
+            schalter_wechsel: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // Two lines up
+                ctx.beginPath();
+                ctx.moveTo(-5, -10);
+                ctx.lineTo(-5, -18);
+                ctx.moveTo(5, -10);
+                ctx.lineTo(5, -18);
+                ctx.stroke();
+                ctx.restore();
+            },
+            licht_decke: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // X inside
+                ctx.beginPath();
+                ctx.moveTo(-8, -8);
+                ctx.lineTo(8, 8);
+                ctx.moveTo(8, -8);
+                ctx.lineTo(-8, 8);
+                ctx.stroke();
+                ctx.restore();
+            },
+            licht_wand: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // X inside
+                ctx.beginPath();
+                ctx.moveTo(-6, -6);
+                ctx.lineTo(6, 6);
+                ctx.moveTo(6, -6);
+                ctx.lineTo(-6, 6);
+                ctx.stroke();
+                // Wall indicator
+                ctx.beginPath();
+                ctx.moveTo(0, 10);
+                ctx.lineTo(0, 18);
+                ctx.stroke();
+                ctx.restore();
+            },
+            // Default for other types
+            default: (ctx, x, y, rot, sel, config) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : (config?.color || '#000');
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // Arrow indicating direction
+                ctx.beginPath();
+                ctx.moveTo(0, -12);
+                ctx.lineTo(0, -20);
+                ctx.lineTo(-4, -16);
+                ctx.moveTo(0, -20);
+                ctx.lineTo(4, -16);
+                ctx.stroke();
+                ctx.restore();
+            }
         };
         
         // Canvas & Context
@@ -1061,12 +1378,12 @@
                 code: code,
                 x: x,
                 y: y,
-                rotation: 0,
+                rotation: 0,  // 0, 90, 180, 270 degrees
                 room: room,
                 floor: document.getElementById('floorSelect')?.value || 'EG',
                 category: config.category,
-                icon: config.icon,
-                price: config.price
+                price: config.price,
+                color: config.color
             };
             
             state.elements.push(element);
@@ -1128,30 +1445,20 @@
                 ctx.fillText(room.name, room.x + 5, room.y + 20);
             });
             
-            // Draw elements
+            // Draw elements with professional symbols
             state.elements.forEach(el => {
                 const isSelected = state.selectedElement?.id === el.id;
+                const config = ELEMENT_CONFIG[el.type];
                 
-                // Background circle
-                ctx.beginPath();
-                ctx.arc(el.x, el.y, 15, 0, Math.PI * 2);
-                ctx.fillStyle = isSelected ? '#e91e63' : '#1f4068';
-                ctx.fill();
-                ctx.strokeStyle = isSelected ? '#fff' : '#333';
-                ctx.lineWidth = 2;
-                ctx.stroke();
+                // Use specific draw function or default
+                const drawFn = SYMBOL_DRAW[el.type] || SYMBOL_DRAW.default;
+                drawFn(ctx, el.x, el.y, el.rotation, isSelected, config);
                 
-                // Icon
-                ctx.font = '16px Arial';
+                // Code label below symbol
+                ctx.font = 'bold 9px Arial';
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = 'white';
-                ctx.fillText(el.icon, el.x, el.y);
-                
-                // Code label
-                ctx.font = '10px Arial';
-                ctx.fillStyle = '#888';
-                ctx.fillText(el.code, el.x, el.y + 25);
+                ctx.fillStyle = isSelected ? '#e91e63' : '#333';
+                ctx.fillText(el.code, el.x, el.y + 28);
             });
             
             // Draw room being created
@@ -1579,6 +1886,7 @@
                 state.selectedElement.rotation = (state.selectedElement.rotation + 90) % 360;
                 hideContextMenu();
                 render();
+                showToast(`Gedreht auf ${state.selectedElement.rotation}°`, 'info');
             }
         }
         
