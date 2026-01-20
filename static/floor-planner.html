@@ -965,6 +965,11 @@
                     <input type="number" id="propRotation" min="0" max="359" step="15" onchange="updateElementRotation()">
                     <span class="unit">°</span>
                 </div>
+                <div class="prop-row" style="margin-top: 8px;">
+                    <label>Höhe:</label>
+                    <input type="number" id="propHeight" min="0" max="400" step="5" onchange="updateElementHeight()" style="width: 70px;">
+                    <span class="unit">cm</span>
+                </div>
                 <div style="display: flex; gap: 5px; margin-top: 12px;">
                     <button class="btn btn-sm btn-outline-light" onclick="duplicateElement()" title="Duplizieren">
                         <i class="bi bi-copy"></i>
@@ -1445,345 +1450,441 @@
             isMeasuring: false
         };
         
-        // Element type to Lexware mapping
+        // Element type to Lexware mapping with default mounting heights (in cm)
         const ELEMENT_CONFIG = {
-            steckdose_schuko: { prefix: 'SD', name: 'Schuko-Steckdose', category: 'Steckdosen', price: 89, color: '#000' },
-            steckdose_doppelt: { prefix: 'SD', name: 'Doppelsteckdose', category: 'Steckdosen', price: 109, color: '#000' },
-            steckdose_usb: { prefix: 'SD', name: 'Steckdose mit USB', category: 'Steckdosen', price: 119, color: '#000' },
-            steckdose_cee16: { prefix: 'CEE', name: 'CEE 16A', category: 'Steckdosen', price: 189, color: '#ff5252' },
-            steckdose_cee32: { prefix: 'CEE', name: 'CEE 32A', category: 'Steckdosen', price: 249, color: '#2196f3' },
-            steckdose_boden: { prefix: 'BT', name: 'Bodentank', category: 'Steckdosen', price: 289, color: '#000' },
-            schalter_aus: { prefix: 'AS', name: 'Ausschalter', category: 'Schalter', price: 79, color: '#000' },
-            schalter_wechsel: { prefix: 'WS', name: 'Wechselschalter', category: 'Schalter', price: 95, color: '#000' },
-            schalter_kreuz: { prefix: 'KS', name: 'Kreuzschalter', category: 'Schalter', price: 105, color: '#000' },
-            schalter_dimmer: { prefix: 'DI', name: 'Dimmer', category: 'Schalter', price: 149, color: '#000' },
-            schalter_taster: { prefix: 'TA', name: 'Taster', category: 'Schalter', price: 85, color: '#000' },
-            schalter_jalousie: { prefix: 'JT', name: 'Jalousietaster', category: 'Schalter', price: 95, color: '#000' },
-            schalter_bewegung: { prefix: 'BM', name: 'Bewegungsmelder', category: 'Schalter', price: 129, color: '#000' },
-            licht_decke: { prefix: 'LA', name: 'Deckenauslass', category: 'Beleuchtung', price: 75, color: '#000' },
-            licht_wand: { prefix: 'WA', name: 'Wandauslass', category: 'Beleuchtung', price: 75, color: '#000' },
-            licht_spot: { prefix: 'SP', name: 'Einbaustrahler', category: 'Beleuchtung', price: 95, color: '#000' },
-            licht_aussen: { prefix: 'AL', name: 'Außenleuchte', category: 'Beleuchtung', price: 110, color: '#000' },
-            licht_notaus: { prefix: 'NA', name: 'Notausgangsleuchte', category: 'Beleuchtung', price: 180, color: '#4caf50' },
-            anschluss_herd: { prefix: 'HA', name: 'Herdanschluss', category: 'Anschlüsse', price: 189, color: '#000' },
-            anschluss_dunst: { prefix: 'DA', name: 'Dunstabzug', category: 'Anschlüsse', price: 95, color: '#000' },
-            anschluss_spuel: { prefix: 'SPA', name: 'Spülmaschine', category: 'Anschlüsse', price: 95, color: '#000' },
-            anschluss_wasch: { prefix: 'WMA', name: 'Waschmaschine', category: 'Anschlüsse', price: 95, color: '#000' },
-            anschluss_netzwerk: { prefix: 'NW', name: 'Netzwerk RJ45', category: 'Anschlüsse', price: 85, color: '#000' },
-            anschluss_tv: { prefix: 'TV', name: 'TV-Anschluss', category: 'Anschlüsse', price: 79, color: '#000' },
-            anschluss_telefon: { prefix: 'TEL', name: 'Telefon TAE', category: 'Anschlüsse', price: 79, color: '#000' },
-            rauchmelder: { prefix: 'RM', name: 'Rauchmelder', category: 'Sonstiges', price: 65, color: '#ff5252' },
-            thermostat: { prefix: 'TH', name: 'Thermostat', category: 'Sonstiges', price: 120, color: '#000' },
-            tuerklingel: { prefix: 'TK', name: 'Türklingel', category: 'Sonstiges', price: 85, color: '#000' },
-            gegensprech: { prefix: 'GS', name: 'Gegensprechanlage', category: 'Sonstiges', price: 180, color: '#000' },
+            steckdose_schuko: { prefix: 'SD', name: 'Schuko-Steckdose', category: 'Steckdosen', price: 89, color: '#000', height: 30 },
+            steckdose_doppelt: { prefix: 'SD', name: 'Doppelsteckdose', category: 'Steckdosen', price: 109, color: '#000', height: 30 },
+            steckdose_usb: { prefix: 'SD', name: 'Steckdose mit USB', category: 'Steckdosen', price: 119, color: '#000', height: 30 },
+            steckdose_cee16: { prefix: 'CEE', name: 'CEE 16A', category: 'Steckdosen', price: 189, color: '#ff5252', height: 100 },
+            steckdose_cee32: { prefix: 'CEE', name: 'CEE 32A', category: 'Steckdosen', price: 249, color: '#2196f3', height: 100 },
+            steckdose_boden: { prefix: 'BT', name: 'Bodentank', category: 'Steckdosen', price: 289, color: '#000', height: 0 },
+            schalter_aus: { prefix: 'AS', name: 'Ausschalter', category: 'Schalter', price: 79, color: '#000', height: 105 },
+            schalter_wechsel: { prefix: 'WS', name: 'Wechselschalter', category: 'Schalter', price: 95, color: '#000', height: 105 },
+            schalter_kreuz: { prefix: 'KS', name: 'Kreuzschalter', category: 'Schalter', price: 105, color: '#000', height: 105 },
+            schalter_dimmer: { prefix: 'DI', name: 'Dimmer', category: 'Schalter', price: 149, color: '#000', height: 105 },
+            schalter_taster: { prefix: 'TA', name: 'Taster', category: 'Schalter', price: 85, color: '#000', height: 105 },
+            schalter_jalousie: { prefix: 'JT', name: 'Jalousietaster', category: 'Schalter', price: 95, color: '#000', height: 105 },
+            schalter_bewegung: { prefix: 'BM', name: 'Bewegungsmelder', category: 'Schalter', price: 129, color: '#000', height: 220 },
+            licht_decke: { prefix: 'LA', name: 'Deckenauslass', category: 'Beleuchtung', price: 75, color: '#000', height: 0 },
+            licht_wand: { prefix: 'WA', name: 'Wandauslass', category: 'Beleuchtung', price: 75, color: '#000', height: 180 },
+            licht_spot: { prefix: 'SP', name: 'Einbaustrahler', category: 'Beleuchtung', price: 95, color: '#000', height: 0 },
+            licht_aussen: { prefix: 'AL', name: 'Außenleuchte', category: 'Beleuchtung', price: 110, color: '#000', height: 250 },
+            licht_notaus: { prefix: 'NA', name: 'Notausgangsleuchte', category: 'Beleuchtung', price: 180, color: '#4caf50', height: 220 },
+            anschluss_herd: { prefix: 'HA', name: 'Herdanschluss', category: 'Anschlüsse', price: 189, color: '#000', height: 30 },
+            anschluss_dunst: { prefix: 'DA', name: 'Dunstabzug', category: 'Anschlüsse', price: 95, color: '#000', height: 200 },
+            anschluss_spuel: { prefix: 'SPA', name: 'Spülmaschine', category: 'Anschlüsse', price: 95, color: '#000', height: 30 },
+            anschluss_wasch: { prefix: 'WMA', name: 'Waschmaschine', category: 'Anschlüsse', price: 95, color: '#000', height: 30 },
+            anschluss_netzwerk: { prefix: 'NW', name: 'Netzwerk RJ45', category: 'Anschlüsse', price: 85, color: '#000', height: 30 },
+            anschluss_tv: { prefix: 'TV', name: 'TV-Anschluss', category: 'Anschlüsse', price: 79, color: '#000', height: 30 },
+            anschluss_telefon: { prefix: 'TEL', name: 'Telefon TAE', category: 'Anschlüsse', price: 79, color: '#000', height: 30 },
+            rauchmelder: { prefix: 'RM', name: 'Rauchmelder', category: 'Sonstiges', price: 65, color: '#ff5252', height: 0 },
+            thermostat: { prefix: 'TH', name: 'Thermostat', category: 'Sonstiges', price: 120, color: '#000', height: 150 },
+            tuerklingel: { prefix: 'TK', name: 'Türklingel', category: 'Sonstiges', price: 85, color: '#000', height: 105 },
+            gegensprech: { prefix: 'GS', name: 'Gegensprechanlage', category: 'Sonstiges', price: 180, color: '#000', height: 150 },
         };
         
-        // Symbol drawing functions for canvas
+        // Symbol drawing functions for canvas - JetPlan Style
+        // Draws white box with symbol, direction arrow, and height indicator
+        const SYMBOL_SIZE = 36;  // Size of symbol box
+        
+        function drawSymbolBox(ctx, x, y, rotation, isSelected, innerDraw) {
+            ctx.save();
+            ctx.translate(x, y);
+            
+            // Draw white box with border
+            const half = SYMBOL_SIZE / 2;
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = isSelected ? '#0099ff' : '#333';
+            ctx.lineWidth = isSelected ? 3 : 1.5;
+            
+            ctx.beginPath();
+            ctx.rect(-half, -half, SYMBOL_SIZE, SYMBOL_SIZE);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Draw inner symbol (rotated)
+            ctx.save();
+            ctx.rotate(rotation * Math.PI / 180);
+            innerDraw(ctx);
+            ctx.restore();
+            
+            // Draw direction arrow (black triangle) - always pointing based on rotation
+            ctx.save();
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.moveTo(half + 8, 0);
+            ctx.lineTo(half + 2, -6);
+            ctx.lineTo(half + 2, 6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            
+            ctx.restore();
+        }
+        
+        function drawHeightIndicator(ctx, x, y, height, code, isSelected) {
+            if (height === undefined || height === null) return;
+            
+            // Height indicator line (dotted, orange/red)
+            ctx.save();
+            ctx.strokeStyle = '#ff6b35';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 3]);
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y + SYMBOL_SIZE/2 + 5);
+            ctx.lineTo(x, y + SYMBOL_SIZE/2 + 35);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Height value
+            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = '#ff6b35';
+            ctx.textAlign = 'center';
+            ctx.fillText(height.toString(), x, y + SYMBOL_SIZE/2 + 48);
+            
+            ctx.restore();
+        }
+        
+        function drawCodeBadge(ctx, x, y, code, isSelected) {
+            // Code badge (red background)
+            ctx.save();
+            
+            const badgeX = x + SYMBOL_SIZE/2 + 5;
+            const badgeY = y;
+            const text = code;
+            
+            ctx.font = 'bold 11px Arial';
+            const textWidth = ctx.measureText(text).width;
+            const padding = 6;
+            
+            // Badge background
+            ctx.fillStyle = isSelected ? '#0099ff' : '#e91e63';
+            ctx.beginPath();
+            ctx.roundRect(badgeX, badgeY - 10, textWidth + padding * 2, 20, 4);
+            ctx.fill();
+            
+            // Badge text
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, badgeX + padding, badgeY);
+            
+            ctx.restore();
+        }
+        
         const SYMBOL_DRAW = {
             steckdose_schuko: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.beginPath();
-                ctx.arc(0, 0, 12, 0, Math.PI * 2);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.fill();
-                ctx.stroke();
-                // Half circle (outlet symbol)
-                ctx.beginPath();
-                ctx.arc(0, 0, 8, 0, Math.PI);
-                ctx.stroke();
-                // Direction arrow
-                ctx.beginPath();
-                ctx.moveTo(0, -12);
-                ctx.lineTo(0, -20);
-                ctx.lineTo(-4, -16);
-                ctx.moveTo(0, -20);
-                ctx.lineTo(4, -16);
-                ctx.stroke();
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.fillStyle = 'white';
+                    // Circle with half circle inside
+                    c.beginPath();
+                    c.arc(0, 0, 12, 0, Math.PI * 2);
+                    c.stroke();
+                    c.beginPath();
+                    c.arc(0, 0, 8, 0, Math.PI);
+                    c.stroke();
+                });
             },
             steckdose_doppelt: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                // Two circles
-                [-8, 8].forEach(ox => {
-                    ctx.beginPath();
-                    ctx.arc(ox, 0, 8, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.arc(ox, 0, 5, 0, Math.PI);
-                    ctx.stroke();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    [-7, 7].forEach(ox => {
+                        c.beginPath();
+                        c.arc(ox, 0, 7, 0, Math.PI * 2);
+                        c.stroke();
+                        c.beginPath();
+                        c.arc(ox, 0, 4, 0, Math.PI);
+                        c.stroke();
+                    });
                 });
-                // Arrow
-                ctx.beginPath();
-                ctx.moveTo(0, -10);
-                ctx.lineTo(0, -18);
-                ctx.lineTo(-4, -14);
-                ctx.moveTo(0, -18);
-                ctx.lineTo(4, -14);
-                ctx.stroke();
-                ctx.restore();
+            },
+            steckdose_usb: (ctx, x, y, rot, sel) => {
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, -3, 9, 0, Math.PI * 2);
+                    c.stroke();
+                    c.beginPath();
+                    c.arc(0, -3, 5, 0, Math.PI);
+                    c.stroke();
+                    c.font = 'bold 7px Arial';
+                    c.fillStyle = '#000';
+                    c.textAlign = 'center';
+                    c.fillText('USB', 0, 12);
+                });
+            },
+            steckdose_cee16: (ctx, x, y, rot, sel) => {
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#ff5252';
+                    c.fillStyle = '#ff5252';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 0, 12, 0, Math.PI * 2);
+                    c.stroke();
+                    // 5 pins
+                    [[-5,-5],[5,-5],[-5,5],[5,5],[0,0]].forEach(([px,py]) => {
+                        c.beginPath();
+                        c.arc(px, py, 2.5, 0, Math.PI * 2);
+                        c.fill();
+                    });
+                });
+            },
+            steckdose_cee32: (ctx, x, y, rot, sel) => {
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#2196f3';
+                    c.fillStyle = '#2196f3';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 0, 12, 0, Math.PI * 2);
+                    c.stroke();
+                    [[-5,-5],[5,-5],[-5,5],[5,5],[0,0]].forEach(([px,py]) => {
+                        c.beginPath();
+                        c.arc(px, py, 2.5, 0, Math.PI * 2);
+                        c.fill();
+                    });
+                });
             },
             schalter_aus: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(0, 0, 10, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // Line up
-                ctx.beginPath();
-                ctx.moveTo(0, -10);
-                ctx.lineTo(0, -18);
-                ctx.stroke();
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 3, 8, 0, Math.PI * 2);
+                    c.stroke();
+                    // Switch line going up
+                    c.beginPath();
+                    c.moveTo(0, -5);
+                    c.lineTo(0, -14);
+                    c.stroke();
+                });
             },
             schalter_wechsel: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(0, 0, 10, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // Two lines up
-                ctx.beginPath();
-                ctx.moveTo(-5, -10);
-                ctx.lineTo(-5, -18);
-                ctx.moveTo(5, -10);
-                ctx.lineTo(5, -18);
-                ctx.stroke();
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 3, 8, 0, Math.PI * 2);
+                    c.stroke();
+                    // Two switch lines
+                    c.beginPath();
+                    c.moveTo(-4, -5);
+                    c.lineTo(-6, -14);
+                    c.moveTo(4, -5);
+                    c.lineTo(6, -14);
+                    c.stroke();
+                });
             },
-            licht_decke: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(0, 0, 12, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // X inside
-                ctx.beginPath();
-                ctx.moveTo(-8, -8);
-                ctx.lineTo(8, 8);
-                ctx.moveTo(8, -8);
-                ctx.lineTo(-8, 8);
-                ctx.stroke();
-                ctx.restore();
-            },
-            licht_wand: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(0, 0, 10, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // X inside
-                ctx.beginPath();
-                ctx.moveTo(-6, -6);
-                ctx.lineTo(6, 6);
-                ctx.moveTo(6, -6);
-                ctx.lineTo(-6, 6);
-                ctx.stroke();
-                // Wall indicator line
-                ctx.beginPath();
-                ctx.moveTo(0, 10);
-                ctx.lineTo(0, 18);
-                ctx.stroke();
-                ctx.restore();
-            },
-            licht_spot: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                // Small filled circle for spot
-                ctx.beginPath();
-                ctx.arc(0, 0, 8, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // Filled center dot
-                ctx.beginPath();
-                ctx.arc(0, 0, 3, 0, Math.PI * 2);
-                ctx.fillStyle = '#000';
-                ctx.fill();
-                ctx.restore();
+            schalter_kreuz: (ctx, x, y, rot, sel) => {
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 3, 8, 0, Math.PI * 2);
+                    c.stroke();
+                    // Cross lines
+                    c.beginPath();
+                    c.moveTo(-6, -5);
+                    c.lineTo(6, -14);
+                    c.moveTo(6, -5);
+                    c.lineTo(-6, -14);
+                    c.stroke();
+                });
             },
             schalter_dimmer: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(0, 0, 10, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // D for dimmer
-                ctx.font = 'bold 10px Arial';
-                ctx.fillStyle = '#000';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('D', 0, 0);
-                // Arrow up
-                ctx.beginPath();
-                ctx.moveTo(0, -10);
-                ctx.lineTo(0, -18);
-                ctx.lineTo(-3, -14);
-                ctx.moveTo(0, -18);
-                ctx.lineTo(3, -14);
-                ctx.stroke();
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 0, 10, 0, Math.PI * 2);
+                    c.stroke();
+                    c.font = 'bold 12px Arial';
+                    c.fillStyle = '#000';
+                    c.textAlign = 'center';
+                    c.textBaseline = 'middle';
+                    c.fillText('D', 0, 0);
+                });
             },
             schalter_taster: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(0, 0, 10, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // T for Taster
-                ctx.font = 'bold 10px Arial';
-                ctx.fillStyle = '#000';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('T', 0, 0);
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 3, 8, 0, Math.PI * 2);
+                    c.stroke();
+                    // Taster symbol (spring)
+                    c.beginPath();
+                    c.moveTo(0, -5);
+                    c.lineTo(-4, -10);
+                    c.lineTo(4, -12);
+                    c.lineTo(0, -16);
+                    c.stroke();
+                });
+            },
+            schalter_jalousie: (ctx, x, y, rot, sel) => {
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.rect(-10, -10, 20, 20);
+                    c.stroke();
+                    // Up/down arrows
+                    c.beginPath();
+                    c.moveTo(-4, -5);
+                    c.lineTo(0, -8);
+                    c.lineTo(4, -5);
+                    c.moveTo(-4, 5);
+                    c.lineTo(0, 8);
+                    c.lineTo(4, 5);
+                    c.stroke();
+                });
             },
             schalter_bewegung: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(0, 0, 12, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // Motion waves
-                ctx.beginPath();
-                ctx.arc(0, 0, 5, -Math.PI/4, Math.PI/4);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.arc(0, 0, 8, -Math.PI/4, Math.PI/4);
-                ctx.stroke();
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    // PIR sensor symbol
+                    c.beginPath();
+                    c.arc(-5, 0, 3, 0, Math.PI * 2);
+                    c.fill();
+                    // Detection waves
+                    c.beginPath();
+                    c.arc(-5, 0, 8, -Math.PI/3, Math.PI/3);
+                    c.stroke();
+                    c.beginPath();
+                    c.arc(-5, 0, 12, -Math.PI/3, Math.PI/3);
+                    c.stroke();
+                });
+            },
+            licht_decke: (ctx, x, y, rot, sel) => {
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 0, 10, 0, Math.PI * 2);
+                    c.stroke();
+                    // X inside
+                    c.beginPath();
+                    c.moveTo(-7, -7);
+                    c.lineTo(7, 7);
+                    c.moveTo(7, -7);
+                    c.lineTo(-7, 7);
+                    c.stroke();
+                });
+            },
+            licht_wand: (ctx, x, y, rot, sel) => {
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 0, 8, 0, Math.PI * 2);
+                    c.stroke();
+                    c.beginPath();
+                    c.moveTo(-5, -5);
+                    c.lineTo(5, 5);
+                    c.moveTo(5, -5);
+                    c.lineTo(-5, 5);
+                    c.stroke();
+                    // Wall line
+                    c.lineWidth = 3;
+                    c.beginPath();
+                    c.moveTo(-12, 12);
+                    c.lineTo(12, 12);
+                    c.stroke();
+                });
+            },
+            licht_spot: (ctx, x, y, rot, sel) => {
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.fillStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 0, 6, 0, Math.PI * 2);
+                    c.fill();
+                    c.beginPath();
+                    c.arc(0, 0, 10, 0, Math.PI * 2);
+                    c.stroke();
+                });
             },
             anschluss_herd: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#000';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                // Square for Herd
-                ctx.beginPath();
-                ctx.rect(-12, -12, 24, 24);
-                ctx.fill();
-                ctx.stroke();
-                // H inside
-                ctx.font = 'bold 14px Arial';
-                ctx.fillStyle = '#000';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('H', 0, 0);
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.rect(-12, -12, 24, 24);
+                    c.stroke();
+                    // 3~ symbol for 3-phase
+                    c.font = 'bold 14px Arial';
+                    c.fillStyle = '#000';
+                    c.textAlign = 'center';
+                    c.textBaseline = 'middle';
+                    c.fillText('3~', 0, 0);
+                });
+            },
+            anschluss_dunst: (ctx, x, y, rot, sel) => {
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.rect(-12, -10, 24, 20);
+                    c.stroke();
+                    // Fan symbol
+                    c.beginPath();
+                    c.moveTo(-6, 0);
+                    c.quadraticCurveTo(0, -8, 6, 0);
+                    c.quadraticCurveTo(0, 8, -6, 0);
+                    c.stroke();
+                });
             },
             rauchmelder: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#ff5252';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(0, 0, 12, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // RM text
-                ctx.font = 'bold 8px Arial';
-                ctx.fillStyle = '#ff5252';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('RM', 0, 0);
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = '#ff5252';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 0, 10, 0, Math.PI * 2);
+                    c.stroke();
+                    c.font = 'bold 10px Arial';
+                    c.fillStyle = '#ff5252';
+                    c.textAlign = 'center';
+                    c.textBaseline = 'middle';
+                    c.fillText('RM', 0, 0);
+                });
             },
             licht_notaus: (ctx, x, y, rot, sel) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : '#4caf50';
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = '#4caf50';
-                // Green rectangle for emergency
-                ctx.beginPath();
-                ctx.rect(-14, -8, 28, 16);
-                ctx.fill();
-                ctx.stroke();
-                // Arrow and running figure symbol
-                ctx.strokeStyle = 'white';
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.moveTo(-6, 0);
-                ctx.lineTo(6, 0);
-                ctx.lineTo(3, -3);
-                ctx.moveTo(6, 0);
-                ctx.lineTo(3, 3);
-                ctx.stroke();
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.fillStyle = '#4caf50';
+                    c.strokeStyle = '#4caf50';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.rect(-12, -8, 24, 16);
+                    c.fill();
+                    // Running person arrow
+                    c.strokeStyle = 'white';
+                    c.fillStyle = 'white';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.moveTo(-5, 0);
+                    c.lineTo(5, 0);
+                    c.lineTo(2, -3);
+                    c.moveTo(5, 0);
+                    c.lineTo(2, 3);
+                    c.stroke();
+                });
             },
             // Default for other types
             default: (ctx, x, y, rot, sel, config) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(rot * Math.PI / 180);
-                ctx.strokeStyle = sel ? '#e91e63' : (config?.color || '#000');
-                ctx.lineWidth = sel ? 3 : 2;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(0, 0, 12, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                // Arrow indicating direction
-                ctx.beginPath();
-                ctx.moveTo(0, -12);
-                ctx.lineTo(0, -20);
-                ctx.lineTo(-4, -16);
-                ctx.moveTo(0, -20);
-                ctx.lineTo(4, -16);
-                ctx.stroke();
-                ctx.restore();
+                drawSymbolBox(ctx, x, y, rot, sel, (c) => {
+                    c.strokeStyle = config?.color || '#000';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(0, 0, 10, 0, Math.PI * 2);
+                    c.stroke();
+                });
             }
         };
         
@@ -1922,6 +2023,7 @@
                 x: x,
                 y: y,
                 rotation: 0,  // 0, 90, 180, 270 degrees
+                height: config.height || 30,  // Mounting height in cm
                 room: room,
                 floor: document.getElementById('floorSelect')?.value || 'EG',
                 category: config.category,
@@ -1993,7 +2095,7 @@
                 ctx.fillText(room.name, room.x + 5, room.y + 20);
             });
             
-            // Draw elements with professional symbols
+            // Draw elements with professional symbols (JetPlan style)
             state.elements.forEach(el => {
                 const isSelected = state.selectedElement?.id === el.id;
                 const config = ELEMENT_CONFIG[el.type];
@@ -2002,11 +2104,14 @@
                 const drawFn = SYMBOL_DRAW[el.type] || SYMBOL_DRAW.default;
                 drawFn(ctx, el.x, el.y, el.rotation, isSelected, config);
                 
-                // Code label below symbol
-                ctx.font = 'bold 9px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillStyle = isSelected ? '#e91e63' : '#333';
-                ctx.fillText(el.code, el.x, el.y + 28);
+                // Draw height indicator (orange dotted line + value)
+                const height = el.height !== undefined ? el.height : config?.height;
+                if (height !== undefined && height > 0) {
+                    drawHeightIndicator(ctx, el.x, el.y, height, el.code, isSelected);
+                }
+                
+                // Draw code badge (pink/blue background)
+                drawCodeBadge(ctx, el.x, el.y, el.code, isSelected);
             });
             
             // Draw room being created
@@ -2425,6 +2530,7 @@
             document.getElementById('propX').value = Math.round(element.x);
             document.getElementById('propY').value = Math.round(element.y);
             document.getElementById('propRotation').value = element.rotation || 0;
+            document.getElementById('propHeight').value = element.height || config?.height || 30;
             
             // Update rotation buttons
             updateRotationButtons(element.rotation || 0);
@@ -2438,9 +2544,11 @@
         
         function updatePropertiesPanel() {
             if (!state.selectedElement) return;
+            const config = ELEMENT_CONFIG[state.selectedElement.type];
             document.getElementById('propX').value = Math.round(state.selectedElement.x);
             document.getElementById('propY').value = Math.round(state.selectedElement.y);
             document.getElementById('propRotation').value = state.selectedElement.rotation || 0;
+            document.getElementById('propHeight').value = state.selectedElement.height || config?.height || 30;
             updateRotationButtons(state.selectedElement.rotation || 0);
         }
         
@@ -2450,6 +2558,14 @@
             });
             const activeId = 'rot' + (Math.round(rotation / 90) * 90 % 360);
             document.getElementById(activeId)?.classList.add('active');
+        }
+        
+        function updateElementHeight() {
+            if (!state.selectedElement) return;
+            const height = parseInt(document.getElementById('propHeight').value) || 30;
+            state.selectedElement.height = height;
+            render();
+            showToast(`Montagehöhe: ${height} cm`, 'info');
         }
         
         function updateElementPosition() {
