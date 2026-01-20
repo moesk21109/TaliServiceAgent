@@ -111,8 +111,8 @@
         
         #floorCanvas {
             position: absolute;
-            top: 0;
-            left: 0;
+            top: 25px;
+            left: 25px;
             cursor: crosshair;
         }
         
@@ -534,6 +534,158 @@
             transform: translateX(-50%);
             z-index: 9999;
         }
+
+        /* Properties Panel */
+        .properties-panel {
+            position: absolute;
+            bottom: 60px;
+            left: 10px;
+            background: rgba(22, 33, 62, 0.95);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 0.8rem;
+            z-index: 100;
+            min-width: 220px;
+            display: none;
+        }
+
+        .properties-panel.visible {
+            display: block;
+        }
+
+        .prop-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .prop-row label {
+            width: 70px;
+            color: #aaa;
+        }
+
+        .prop-row input {
+            width: 60px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+
+        .prop-row input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .prop-row .unit {
+            color: #666;
+            font-size: 0.7rem;
+        }
+
+        .rotation-btns {
+            display: flex;
+            gap: 5px;
+        }
+
+        .rotation-btns button {
+            width: 32px;
+            height: 32px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .rotation-btns button:hover {
+            background: var(--primary);
+        }
+
+        .rotation-btns button.active {
+            background: var(--primary);
+        }
+
+        /* Grid Settings */
+        .grid-settings {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            background: rgba(22, 33, 62, 0.95);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 0.8rem;
+            z-index: 100;
+            display: none;
+        }
+
+        .grid-settings.visible {
+            display: block;
+        }
+
+        .grid-settings label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .grid-settings input[type="checkbox"] {
+            accent-color: var(--primary);
+        }
+
+        .grid-settings input[type="number"] {
+            width: 60px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        /* Rulers */
+        .ruler-h {
+            position: absolute;
+            top: 0;
+            left: 75px;
+            right: var(--sidebar-width);
+            height: 25px;
+            background: #0f0f23;
+            border-bottom: 1px solid #333;
+            z-index: 50;
+            display: none;
+        }
+
+        .ruler-v {
+            position: absolute;
+            top: 25px;
+            left: 50px;
+            width: 25px;
+            bottom: 0;
+            background: #0f0f23;
+            border-right: 1px solid #333;
+            z-index: 50;
+            display: none;
+        }
+
+        .ruler-corner {
+            position: absolute;
+            top: 0;
+            left: 50px;
+            width: 25px;
+            height: 25px;
+            background: #0f0f23;
+            border-right: 1px solid #333;
+            border-bottom: 1px solid #333;
+            z-index: 51;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -619,7 +771,80 @@
                 <button class="zoom-btn" onclick="zoomIn()"><i class="bi bi-zoom-in"></i></button>
                 <button class="zoom-btn" onclick="zoomOut()"><i class="bi bi-zoom-out"></i></button>
                 <button class="zoom-btn" onclick="zoomFit()"><i class="bi bi-arrows-fullscreen"></i></button>
+                <button class="zoom-btn" onclick="toggleGrid()" title="Raster ein/aus"><i class="bi bi-grid-3x3"></i></button>
+                <button class="zoom-btn" onclick="toggleGridSettings()" title="Raster-Einstellungen"><i class="bi bi-gear"></i></button>
             </div>
+            
+            <!-- Grid Settings Panel -->
+            <div class="grid-settings" id="gridSettingsPanel">
+                <div style="font-weight: bold; margin-bottom: 10px;">Raster-Einstellungen</div>
+                <label>
+                    <input type="checkbox" id="gridEnabled" checked onchange="updateGridSettings()">
+                    Raster anzeigen
+                </label>
+                <label>
+                    <input type="checkbox" id="snapToGrid" checked onchange="updateGridSettings()">
+                    Am Raster ausrichten
+                </label>
+                <div class="prop-row">
+                    <label>Größe:</label>
+                    <input type="number" id="gridSize" value="50" min="10" max="200" onchange="updateGridSettings()">
+                    <span class="unit">px</span>
+                </div>
+                <div class="prop-row">
+                    <label>Maßstab:</label>
+                    <select id="gridScale" style="background: #1a1a2e; border: 1px solid #444; color: white; padding: 4px; border-radius: 4px;" onchange="updateGridSettings()">
+                        <option value="100">1:100 (1cm = 1m)</option>
+                        <option value="50">1:50 (2cm = 1m)</option>
+                        <option value="20">1:20 (5cm = 1m)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Properties Panel for selected element -->
+            <div class="properties-panel" id="propertiesPanel">
+                <div style="font-weight: bold; margin-bottom: 10px;">
+                    <i class="bi bi-lightning-fill text-warning me-2"></i>
+                    <span id="propElementName">Element</span>
+                </div>
+                <div class="prop-row">
+                    <label>Position X:</label>
+                    <input type="number" id="propX" onchange="updateElementPosition()">
+                    <span class="unit">cm</span>
+                </div>
+                <div class="prop-row">
+                    <label>Position Y:</label>
+                    <input type="number" id="propY" onchange="updateElementPosition()">
+                    <span class="unit">cm</span>
+                </div>
+                <div class="prop-row">
+                    <label>Richtung:</label>
+                    <div class="rotation-btns">
+                        <button onclick="setRotation(0)" title="Nach oben" id="rot0"><i class="bi bi-arrow-up"></i></button>
+                        <button onclick="setRotation(90)" title="Nach rechts" id="rot90"><i class="bi bi-arrow-right"></i></button>
+                        <button onclick="setRotation(180)" title="Nach unten" id="rot180"><i class="bi bi-arrow-down"></i></button>
+                        <button onclick="setRotation(270)" title="Nach links" id="rot270"><i class="bi bi-arrow-left"></i></button>
+                    </div>
+                </div>
+                <div class="prop-row" style="margin-top: 10px;">
+                    <label>Winkel:</label>
+                    <input type="number" id="propRotation" min="0" max="359" step="15" onchange="updateElementRotation()">
+                    <span class="unit">°</span>
+                </div>
+                <div style="display: flex; gap: 5px; margin-top: 12px;">
+                    <button class="btn btn-sm btn-outline-light" onclick="duplicateElement()" title="Duplizieren">
+                        <i class="bi bi-copy"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteSelectedElement()" title="Löschen">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Rulers -->
+            <div class="ruler-corner" id="rulerCorner"></div>
+            <canvas class="ruler-h" id="rulerH" height="25"></canvas>
+            <canvas class="ruler-v" id="rulerV" width="25"></canvas>
         </div>
         
         <!-- Right Sidebar - Elements -->
@@ -1038,8 +1263,8 @@
         const state = {
             currentTool: 'select',
             zoom: 1,
-            panX: 0,
-            panY: 0,
+            panX: 25,  // Offset for ruler
+            panY: 25,  // Offset for ruler
             floorPlanImage: null,
             elements: [],
             rooms: [],
@@ -1047,7 +1272,12 @@
             isDragging: false,
             isDrawing: false,
             drawStart: null,
-            elementCounts: {}
+            elementCounts: {},
+            // Grid settings
+            gridEnabled: true,
+            snapToGrid: true,
+            gridSize: 50,  // pixels
+            gridScale: 100  // 1:100 scale
         };
         
         // Element type to Lexware mapping
@@ -1213,10 +1443,158 @@
                 ctx.moveTo(6, -6);
                 ctx.lineTo(-6, 6);
                 ctx.stroke();
-                // Wall indicator
+                // Wall indicator line
                 ctx.beginPath();
                 ctx.moveTo(0, 10);
                 ctx.lineTo(0, 18);
+                ctx.stroke();
+                ctx.restore();
+            },
+            licht_spot: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                // Small filled circle for spot
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // Filled center dot
+                ctx.beginPath();
+                ctx.arc(0, 0, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#000';
+                ctx.fill();
+                ctx.restore();
+            },
+            schalter_dimmer: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // D for dimmer
+                ctx.font = 'bold 10px Arial';
+                ctx.fillStyle = '#000';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('D', 0, 0);
+                // Arrow up
+                ctx.beginPath();
+                ctx.moveTo(0, -10);
+                ctx.lineTo(0, -18);
+                ctx.lineTo(-3, -14);
+                ctx.moveTo(0, -18);
+                ctx.lineTo(3, -14);
+                ctx.stroke();
+                ctx.restore();
+            },
+            schalter_taster: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // T for Taster
+                ctx.font = 'bold 10px Arial';
+                ctx.fillStyle = '#000';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('T', 0, 0);
+                ctx.restore();
+            },
+            schalter_bewegung: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // Motion waves
+                ctx.beginPath();
+                ctx.arc(0, 0, 5, -Math.PI/4, Math.PI/4);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, -Math.PI/4, Math.PI/4);
+                ctx.stroke();
+                ctx.restore();
+            },
+            anschluss_herd: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#000';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                // Square for Herd
+                ctx.beginPath();
+                ctx.rect(-12, -12, 24, 24);
+                ctx.fill();
+                ctx.stroke();
+                // H inside
+                ctx.font = 'bold 14px Arial';
+                ctx.fillStyle = '#000';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('H', 0, 0);
+                ctx.restore();
+            },
+            rauchmelder: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#ff5252';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // RM text
+                ctx.font = 'bold 8px Arial';
+                ctx.fillStyle = '#ff5252';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('RM', 0, 0);
+                ctx.restore();
+            },
+            licht_notaus: (ctx, x, y, rot, sel) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.strokeStyle = sel ? '#e91e63' : '#4caf50';
+                ctx.lineWidth = sel ? 3 : 2;
+                ctx.fillStyle = '#4caf50';
+                // Green rectangle for emergency
+                ctx.beginPath();
+                ctx.rect(-14, -8, 28, 16);
+                ctx.fill();
+                ctx.stroke();
+                // Arrow and running figure symbol
+                ctx.strokeStyle = 'white';
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.moveTo(-6, 0);
+                ctx.lineTo(6, 0);
+                ctx.lineTo(3, -3);
+                ctx.moveTo(6, 0);
+                ctx.lineTo(3, 3);
                 ctx.stroke();
                 ctx.restore();
             },
@@ -1426,6 +1804,11 @@
             ctx.translate(state.panX, state.panY);
             ctx.scale(state.zoom, state.zoom);
             
+            // Draw grid
+            if (state.gridEnabled) {
+                drawGrid();
+            }
+            
             // Draw floor plan image
             if (state.floorPlanImage) {
                 ctx.drawImage(state.floorPlanImage, 0, 0);
@@ -1476,6 +1859,126 @@
             }
             
             ctx.restore();
+            
+            // Draw rulers
+            drawRulers();
+        }
+        
+        function drawGrid() {
+            const gridSize = state.gridSize;
+            const viewWidth = canvas.width / state.zoom;
+            const viewHeight = canvas.height / state.zoom;
+            const startX = -state.panX / state.zoom;
+            const startY = -state.panY / state.zoom;
+            
+            // Calculate grid start positions aligned to grid
+            const firstX = Math.floor(startX / gridSize) * gridSize;
+            const firstY = Math.floor(startY / gridSize) * gridSize;
+            
+            ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+            ctx.lineWidth = 0.5;
+            
+            // Draw vertical lines
+            for (let x = firstX; x <= startX + viewWidth + gridSize; x += gridSize) {
+                const isMajor = Math.round(x / gridSize) % 5 === 0;
+                ctx.strokeStyle = isMajor ? 'rgba(100, 100, 100, 0.5)' : 'rgba(100, 100, 100, 0.2)';
+                ctx.lineWidth = isMajor ? 1 : 0.5;
+                ctx.beginPath();
+                ctx.moveTo(x, startY);
+                ctx.lineTo(x, startY + viewHeight + gridSize);
+                ctx.stroke();
+            }
+            
+            // Draw horizontal lines
+            for (let y = firstY; y <= startY + viewHeight + gridSize; y += gridSize) {
+                const isMajor = Math.round(y / gridSize) % 5 === 0;
+                ctx.strokeStyle = isMajor ? 'rgba(100, 100, 100, 0.5)' : 'rgba(100, 100, 100, 0.2)';
+                ctx.lineWidth = isMajor ? 1 : 0.5;
+                ctx.beginPath();
+                ctx.moveTo(startX, y);
+                ctx.lineTo(startX + viewWidth + gridSize, y);
+                ctx.stroke();
+            }
+        }
+        
+        function drawRulers() {
+            const rulerH = document.getElementById('rulerH');
+            const rulerV = document.getElementById('rulerV');
+            if (!rulerH || !rulerV) return;
+            
+            const ctxH = rulerH.getContext('2d');
+            const ctxV = rulerV.getContext('2d');
+            
+            // Resize rulers
+            const container = document.getElementById('canvasContainer');
+            rulerH.width = container.clientWidth - 25;
+            rulerV.height = container.clientHeight - 25;
+            
+            // Clear
+            ctxH.fillStyle = '#0f0f23';
+            ctxH.fillRect(0, 0, rulerH.width, 25);
+            ctxV.fillStyle = '#0f0f23';
+            ctxV.fillRect(0, 0, 25, rulerV.height);
+            
+            // Settings
+            const gridSize = state.gridSize;
+            const scale = state.gridScale; // e.g. 100 means 1:100
+            const unit = gridSize * scale / 100; // cm per grid
+            
+            ctxH.font = '9px Arial';
+            ctxH.fillStyle = '#888';
+            ctxH.strokeStyle = '#444';
+            ctxV.font = '9px Arial';
+            ctxV.fillStyle = '#888';
+            ctxV.strokeStyle = '#444';
+            
+            // Horizontal ruler
+            const startX = -state.panX;
+            const firstTickX = Math.floor(startX / (gridSize * state.zoom)) * gridSize;
+            
+            for (let i = 0; i < rulerH.width / (gridSize * state.zoom) + 2; i++) {
+                const worldX = firstTickX + i * gridSize;
+                const screenX = worldX * state.zoom + state.panX - 25;
+                const isMajor = Math.round(worldX / gridSize) % 5 === 0;
+                
+                if (screenX >= 0 && screenX <= rulerH.width) {
+                    ctxH.beginPath();
+                    ctxH.moveTo(screenX, isMajor ? 10 : 18);
+                    ctxH.lineTo(screenX, 25);
+                    ctxH.stroke();
+                    
+                    if (isMajor) {
+                        const meters = (worldX / gridSize) * unit / 100;
+                        ctxH.fillText(meters.toFixed(1) + 'm', screenX + 3, 9);
+                    }
+                }
+            }
+            
+            // Vertical ruler
+            const startY = -state.panY;
+            const firstTickY = Math.floor(startY / (gridSize * state.zoom)) * gridSize;
+            
+            for (let i = 0; i < rulerV.height / (gridSize * state.zoom) + 2; i++) {
+                const worldY = firstTickY + i * gridSize;
+                const screenY = worldY * state.zoom + state.panY - 25;
+                const isMajor = Math.round(worldY / gridSize) % 5 === 0;
+                
+                if (screenY >= 0 && screenY <= rulerV.height) {
+                    ctxV.beginPath();
+                    ctxV.moveTo(isMajor ? 10 : 18, screenY);
+                    ctxV.lineTo(25, screenY);
+                    ctxV.stroke();
+                    
+                    if (isMajor) {
+                        const meters = (worldY / gridSize) * unit / 100;
+                        ctxV.save();
+                        ctxV.translate(9, screenY + 3);
+                        ctxV.rotate(-Math.PI / 2);
+                        ctxV.fillText(meters.toFixed(1) + 'm', 0, 0);
+                        ctxV.restore();
+                    }
+                }
+            }
         }
         
         // =============================================
@@ -1526,10 +2029,12 @@
                 if (clickedElement) {
                     state.selectedElement = clickedElement;
                     state.isDragging = true;
+                    showPropertiesPanel(clickedElement);
                     render();
                 } else {
                     // No element clicked - start panning with left mouse
                     state.selectedElement = null;
+                    hidePropertiesPanel();
                     state.isPanning = true;
                     state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
                     canvas.style.cursor = 'grabbing';
@@ -1554,8 +2059,18 @@
                 `X: ${Math.round(coords.x)} | Y: ${Math.round(coords.y)}`;
             
             if (state.isDragging && state.selectedElement) {
-                state.selectedElement.x = coords.x;
-                state.selectedElement.y = coords.y;
+                let newX = coords.x;
+                let newY = coords.y;
+                
+                // Snap to grid if enabled
+                if (state.snapToGrid) {
+                    newX = Math.round(newX / state.gridSize) * state.gridSize;
+                    newY = Math.round(newY / state.gridSize) * state.gridSize;
+                }
+                
+                state.selectedElement.x = newX;
+                state.selectedElement.y = newY;
+                updatePropertiesPanel();
                 render();
             } else if (state.isPanning) {
                 state.panX = e.clientX - state.panStart.x;
@@ -1682,6 +2197,129 @@
         }
         
         // =============================================
+        // GRID SETTINGS
+        // =============================================
+        function toggleGrid() {
+            state.gridEnabled = !state.gridEnabled;
+            document.getElementById('gridEnabled').checked = state.gridEnabled;
+            render();
+            showToast(state.gridEnabled ? 'Raster aktiviert' : 'Raster deaktiviert', 'info');
+        }
+        
+        function toggleGridSettings() {
+            const panel = document.getElementById('gridSettingsPanel');
+            panel.classList.toggle('visible');
+        }
+        
+        function updateGridSettings() {
+            state.gridEnabled = document.getElementById('gridEnabled').checked;
+            state.snapToGrid = document.getElementById('snapToGrid').checked;
+            state.gridSize = parseInt(document.getElementById('gridSize').value) || 50;
+            state.gridScale = parseInt(document.getElementById('gridScale').value) || 100;
+            render();
+        }
+        
+        // =============================================
+        // PROPERTIES PANEL
+        // =============================================
+        function showPropertiesPanel(element) {
+            const panel = document.getElementById('propertiesPanel');
+            const config = ELEMENT_CONFIG[element.type];
+            
+            document.getElementById('propElementName').textContent = config?.name || element.type;
+            document.getElementById('propX').value = Math.round(element.x);
+            document.getElementById('propY').value = Math.round(element.y);
+            document.getElementById('propRotation').value = element.rotation || 0;
+            
+            // Update rotation buttons
+            updateRotationButtons(element.rotation || 0);
+            
+            panel.classList.add('visible');
+        }
+        
+        function hidePropertiesPanel() {
+            document.getElementById('propertiesPanel').classList.remove('visible');
+        }
+        
+        function updatePropertiesPanel() {
+            if (!state.selectedElement) return;
+            document.getElementById('propX').value = Math.round(state.selectedElement.x);
+            document.getElementById('propY').value = Math.round(state.selectedElement.y);
+            document.getElementById('propRotation').value = state.selectedElement.rotation || 0;
+            updateRotationButtons(state.selectedElement.rotation || 0);
+        }
+        
+        function updateRotationButtons(rotation) {
+            ['rot0', 'rot90', 'rot180', 'rot270'].forEach(id => {
+                document.getElementById(id).classList.remove('active');
+            });
+            const activeId = 'rot' + (Math.round(rotation / 90) * 90 % 360);
+            document.getElementById(activeId)?.classList.add('active');
+        }
+        
+        function updateElementPosition() {
+            if (!state.selectedElement) return;
+            
+            let newX = parseInt(document.getElementById('propX').value) || 0;
+            let newY = parseInt(document.getElementById('propY').value) || 0;
+            
+            // Snap to grid if enabled
+            if (state.snapToGrid) {
+                newX = Math.round(newX / state.gridSize) * state.gridSize;
+                newY = Math.round(newY / state.gridSize) * state.gridSize;
+            }
+            
+            state.selectedElement.x = newX;
+            state.selectedElement.y = newY;
+            
+            // Update inputs to snapped values
+            document.getElementById('propX').value = newX;
+            document.getElementById('propY').value = newY;
+            
+            render();
+        }
+        
+        function updateElementRotation() {
+            if (!state.selectedElement) return;
+            const rotation = parseInt(document.getElementById('propRotation').value) || 0;
+            state.selectedElement.rotation = rotation % 360;
+            updateRotationButtons(state.selectedElement.rotation);
+            render();
+        }
+        
+        function setRotation(degrees) {
+            if (!state.selectedElement) return;
+            state.selectedElement.rotation = degrees;
+            document.getElementById('propRotation').value = degrees;
+            updateRotationButtons(degrees);
+            render();
+            showToast(`Richtung: ${degrees}°`, 'info');
+        }
+        
+        function duplicateElement() {
+            if (!state.selectedElement) return;
+            
+            const config = ELEMENT_CONFIG[state.selectedElement.type];
+            const newX = state.selectedElement.x + state.gridSize;
+            const newY = state.selectedElement.y + state.gridSize;
+            
+            addElement(state.selectedElement.type, newX, newY, state.selectedElement.room);
+            showToast('Element dupliziert', 'success');
+        }
+        
+        function deleteSelectedElement() {
+            if (!state.selectedElement) return;
+            
+            state.elements = state.elements.filter(el => el.id !== state.selectedElement.id);
+            state.selectedElement = null;
+            hidePropertiesPanel();
+            updateElementCount();
+            updateElementList();
+            render();
+            showToast('Element gelöscht', 'success');
+        }
+        
+        // =============================================
         // FILE UPLOAD
         // =============================================
         function initUpload() {
@@ -1765,10 +2403,15 @@
             document.getElementById('canvasInfo').style.display = 'block';
             document.getElementById('zoomControls').style.display = 'flex';
             
-            // Resize canvas
+            // Show rulers
+            document.getElementById('rulerH').style.display = 'block';
+            document.getElementById('rulerV').style.display = 'block';
+            document.getElementById('rulerCorner').style.display = 'block';
+            
+            // Resize canvas (account for rulers)
             const container = document.getElementById('canvasContainer');
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
+            canvas.width = container.clientWidth - 25;
+            canvas.height = container.clientHeight - 25;
             
             zoomFit();
             showToast('Grundriss geladen!', 'success');
