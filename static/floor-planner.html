@@ -1485,8 +1485,12 @@
             canvas.addEventListener('mousedown', onCanvasMouseDown);
             canvas.addEventListener('mousemove', onCanvasMouseMove);
             canvas.addEventListener('mouseup', onCanvasMouseUp);
-            canvas.addEventListener('wheel', onCanvasWheel);
+            canvas.addEventListener('mouseleave', onCanvasMouseUp); // Stop dragging when leaving
+            canvas.addEventListener('wheel', onCanvasWheel, { passive: false });
             canvas.addEventListener('contextmenu', onContextMenu);
+            
+            // Prevent middle mouse button default behavior (auto-scroll)
+            canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
             
             // Double click to edit
             canvas.addEventListener('dblclick', onCanvasDoubleClick);
@@ -1503,6 +1507,15 @@
         function onCanvasMouseDown(e) {
             const coords = getCanvasCoords(e);
             
+            // Middle mouse button (wheel click) = always pan
+            if (e.button === 1) {
+                e.preventDefault();
+                state.isPanning = true;
+                state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            
             if (state.currentTool === 'select') {
                 // Check if clicking on element
                 const clickedElement = state.elements.find(el => {
@@ -1515,7 +1528,11 @@
                     state.isDragging = true;
                     render();
                 } else {
+                    // No element clicked - start panning with left mouse
                     state.selectedElement = null;
+                    state.isPanning = true;
+                    state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
+                    canvas.style.cursor = 'grabbing';
                     render();
                 }
             } else if (state.currentTool === 'pan') {
@@ -1576,14 +1593,16 @@
             state.isDragging = false;
             state.isPanning = false;
             state.isDrawing = false;
-            canvas.style.cursor = state.currentTool === 'pan' ? 'grab' : 'default';
+            updateCursor();
             render();
         }
         
         function onCanvasWheel(e) {
             e.preventDefault();
-            const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            const newZoom = Math.max(0.1, Math.min(5, state.zoom * delta));
+            
+            // Scroll up = zoom in, scroll down = zoom out
+            const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+            const newZoom = Math.max(0.1, Math.min(10, state.zoom * zoomFactor));
             
             // Zoom towards mouse position
             const rect = canvas.getBoundingClientRect();
