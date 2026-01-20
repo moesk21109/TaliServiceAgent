@@ -1959,45 +1959,174 @@
             return groups;
         }
         
-        function drawCombinationFrame(ctx, group) {
-            if (group.length < 2) return;
+        function drawCombinationFrame(ctx, group, isAnySelected) {
+            if (group.length < 1) return;
             
-            // Sort by Y position (top to bottom), then by X (left to right)
-            const sorted = [...group].sort((a, b) => {
-                if (Math.abs(a.y - b.y) < 20) return a.x - b.x;
-                return a.y - b.y;
-            });
+            // Sort by Y position (top to bottom) for vertical arrangement
+            const sorted = [...group].sort((a, b) => a.y - b.y);
             
-            // Calculate bounding box with padding
-            const padding = 8;
+            // Calculate bounding box - BIG white frame like JetPlan
+            const padding = 12;
+            const elementSpacing = SYMBOL_SIZE + 4;
+            
             const minX = Math.min(...sorted.map(e => e.x)) - SYMBOL_SIZE/2 - padding;
             const maxX = Math.max(...sorted.map(e => e.x)) + SYMBOL_SIZE/2 + padding;
             const minY = Math.min(...sorted.map(e => e.y)) - SYMBOL_SIZE/2 - padding;
             const maxY = Math.max(...sorted.map(e => e.y)) + SYMBOL_SIZE/2 + padding;
             
+            const frameWidth = maxX - minX;
+            const frameHeight = maxY - minY;
+            const centerX = (minX + maxX) / 2;
+            
             ctx.save();
             
-            // Outer frame (dark gray, modern look)
-            ctx.strokeStyle = '#555';
-            ctx.lineWidth = 3;
-            ctx.fillStyle = 'rgba(60, 60, 60, 0.3)';
+            // Big white frame (like JetPlan)
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = isAnySelected ? '#0099ff' : '#333';
+            ctx.lineWidth = isAnySelected ? 2.5 : 2;
             
             ctx.beginPath();
-            ctx.roundRect(minX, minY, maxX - minX, maxY - minY, 6);
+            ctx.roundRect(minX, minY, frameWidth, frameHeight, 4);
             ctx.fill();
             ctx.stroke();
             
-            // Combination label (e.g., "3er")
-            const count = group.length;
-            const labelText = `${count}er`;
-            ctx.font = 'bold 10px Arial';
-            ctx.fillStyle = '#888';
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'top';
-            ctx.fillText(labelText, maxX - 4, minY + 3);
+            // Direction arrow at top (black triangle pointing up)
+            const arrowSize = 12;
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.moveTo(centerX, minY - arrowSize - 2);
+            ctx.lineTo(centerX - arrowSize/2, minY - 2);
+            ctx.lineTo(centerX + arrowSize/2, minY - 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Get height from first element (all in group should have same height)
+            const firstEl = sorted[0];
+            const config = ELEMENT_CONFIG[firstEl.type];
+            const height = firstEl.height !== undefined ? firstEl.height : config?.height;
+            
+            // Height indicator (red number with dotted line) - only once for group
+            if (height !== undefined && height > 0) {
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 3]);
+                
+                // Dotted line from frame to height number
+                ctx.beginPath();
+                ctx.moveTo(maxX, minY + frameHeight/2);
+                ctx.lineTo(maxX + 40, minY + frameHeight/2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Height number
+                ctx.font = 'bold 14px Arial';
+                ctx.fillStyle = '#e74c3c';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(height.toString(), maxX + 45, minY + frameHeight/2);
+            }
             
             ctx.restore();
         }
+        
+        function drawElementInFrame(ctx, el, isSelected) {
+            // Draw just the inner symbol (no box, the frame provides that)
+            const config = ELEMENT_CONFIG[el.type];
+            const drawFn = SYMBOL_DRAW[el.type];
+            
+            if (drawFn) {
+                // Draw the symbol directly without the white box
+                ctx.save();
+                ctx.translate(el.x, el.y);
+                ctx.rotate(el.rotation * Math.PI / 180);
+                
+                // Draw symbol innards
+                const innerDraw = SYMBOL_INNER[el.type];
+                if (innerDraw) {
+                    innerDraw(ctx, isSelected);
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // Inner symbol drawings (without the box)
+        const SYMBOL_INNER = {
+            steckdose_schuko: (ctx, sel) => {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, 0, Math.PI);
+                ctx.stroke();
+            },
+            steckdose_doppelt: (ctx, sel) => {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                [-7, 7].forEach(ox => {
+                    ctx.beginPath();
+                    ctx.arc(ox, 0, 7, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(ox, 0, 4, 0, Math.PI);
+                    ctx.stroke();
+                });
+            },
+            schalter: (ctx, sel) => {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(-8, 0, 5, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(-3, 0);
+                ctx.lineTo(12, -10);
+                ctx.stroke();
+            },
+            schalter_wechsel: (ctx, sel) => {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(-8, 0, 5, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(-3, 0);
+                ctx.lineTo(12, -10);
+                ctx.moveTo(-3, 0);
+                ctx.lineTo(12, 10);
+                ctx.stroke();
+            },
+            licht_decke: (ctx, sel) => {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-10, -10);
+                ctx.lineTo(10, 10);
+                ctx.moveTo(10, -10);
+                ctx.lineTo(-10, 10);
+                ctx.stroke();
+            },
+            licht_wand: (ctx, sel) => {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(-10, 0);
+                ctx.lineTo(10, 0);
+                ctx.stroke();
+            },
+            default: (ctx, sel) => {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        };
         
         const SYMBOL_DRAW = {
             steckdose_schuko: (ctx, x, y, rot, sel) => {
@@ -2489,34 +2618,39 @@
             
             saveHistory();
             
-            // Smart snap: Check if there's a nearby element to align with
-            const snapDistance = 50;
+            // Smart snap: ALWAYS snap BELOW existing elements (vertical stacking like JetPlan)
+            const snapDistance = 60;
             let snapX = x;
             let snapY = y;
+            let snapped = false;
+            
+            // Find closest element to snap to
+            let closestEl = null;
+            let closestDist = snapDistance;
             
             state.elements.forEach(el => {
                 const dist = Math.sqrt(Math.pow(el.x - x, 2) + Math.pow(el.y - y, 2));
-                if (dist < snapDistance && dist > 5) {
-                    // Check if should align horizontally (same Y) or vertically (same X)
-                    if (Math.abs(el.y - y) < 25) {
-                        // Align horizontally - place next to it
-                        snapY = el.y;
-                        if (x > el.x) {
-                            snapX = el.x + SYMBOL_SIZE + 4; // Place to the right
-                        } else {
-                            snapX = el.x - SYMBOL_SIZE - 4; // Place to the left
-                        }
-                    } else if (Math.abs(el.x - x) < 25) {
-                        // Align vertically - place below/above
-                        snapX = el.x;
-                        if (y > el.y) {
-                            snapY = el.y + SYMBOL_SIZE + 4; // Place below
-                        } else {
-                            snapY = el.y - SYMBOL_SIZE - 4; // Place above
-                        }
-                    }
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestEl = el;
                 }
             });
+            
+            if (closestEl) {
+                // Find the bottom-most element in this group
+                const groupElements = state.elements.filter(el => {
+                    return Math.abs(el.x - closestEl.x) < 30;
+                });
+                
+                const bottomEl = groupElements.reduce((bottom, el) => {
+                    return el.y > bottom.y ? el : bottom;
+                }, closestEl);
+                
+                // Place directly below, same X position (vertical stacking)
+                snapX = closestEl.x;
+                snapY = bottomEl.y + SYMBOL_SIZE + 8;
+                snapped = true;
+            }
             
             // Generate unique ID
             const prefix = config.prefix;
@@ -2740,39 +2874,45 @@
                 ctx.fillText(areaText, room.x + 10, room.y + 27);
             });
             
-            // Find element groups (combinations within 40px of each other)
-            const elementGroups = findElementGroups(state.elements, 40);
+            // Find element groups (combinations within 50px of each other)
+            const elementGroups = findElementGroups(state.elements, 50);
             
-            // Draw combination frames first (behind elements)
+            // Draw elements grouped with combination frames (JetPlan style)
             elementGroups.forEach(group => {
-                if (group.length > 1) {
-                    drawCombinationFrame(ctx, group);
-                }
-            });
-            
-            // Draw elements with professional symbols (JetPlan style)
-            state.elements.forEach(el => {
-                const isSelected = state.selectedElement?.id === el.id;
-                const config = ELEMENT_CONFIG[el.type];
+                const isAnySelected = group.some(el => state.selectedElement?.id === el.id);
                 
-                // Draw snap points for selected element (behind the symbol)
-                drawSnapPoints(ctx, el.x, el.y, isSelected);
+                // Draw combination frame (white box with arrow) for ALL groups
+                drawCombinationFrame(ctx, group, isAnySelected);
                 
-                // Use specific draw function or default
-                const drawFn = SYMBOL_DRAW[el.type] || SYMBOL_DRAW.default;
-                drawFn(ctx, el.x, el.y, el.rotation, isSelected, config);
-                
-                // Draw positioning cross below symbol
-                drawPositioningCross(ctx, el.x, el.y, isSelected);
-                
-                // Draw height badge (red badge with number)
-                const height = el.height !== undefined ? el.height : config?.height;
-                if (height !== undefined && height > 0) {
-                    drawHeightIndicator(ctx, el.x, el.y, height, el.code, isSelected);
-                }
-                
-                // Draw code badge (pink/blue background)
-                drawCodeBadge(ctx, el.x, el.y, el.code, isSelected);
+                // Draw inner symbols for each element in the group
+                group.forEach(el => {
+                    const isSelected = state.selectedElement?.id === el.id;
+                    
+                    // Draw the inner symbol only (frame is provided by combination frame)
+                    ctx.save();
+                    ctx.translate(el.x, el.y);
+                    ctx.rotate((el.rotation || 0) * Math.PI / 180);
+                    
+                    const innerDraw = SYMBOL_INNER[el.type] || SYMBOL_INNER.default;
+                    if (innerDraw) {
+                        innerDraw(ctx, isSelected);
+                    }
+                    
+                    ctx.restore();
+                    
+                    // Draw selection highlight for selected element
+                    if (isSelected) {
+                        ctx.save();
+                        ctx.strokeStyle = '#0099ff';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([4, 4]);
+                        ctx.beginPath();
+                        ctx.arc(el.x, el.y, SYMBOL_SIZE/2 + 5, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.restore();
+                    }
+                });
             });
             
             // Draw room being created
