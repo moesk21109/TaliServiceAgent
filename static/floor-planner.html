@@ -1536,9 +1536,12 @@
             texts: [],      // Text annotations
             lines: [],      // Connection lines
             selectedElement: null,
+            selectedRoom: null,     // Selected room for editing
             selectedText: null,
             selectedLine: null,
             isDragging: false,
+            isDraggingRoom: false,  // Dragging room state
+            roomDragOffset: null,   // Offset for room dragging
             isDrawing: false,
             isDrawingLine: false,  // Line tool drawing state
             drawStart: null,
@@ -2354,11 +2357,30 @@
             
             // Draw rooms
             state.rooms.forEach(room => {
+                const isSelected = state.selectedRoom?.id === room.id;
+                
                 ctx.fillStyle = room.color + '40'; // Semi-transparent
-                ctx.strokeStyle = room.color;
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = isSelected ? '#e91e63' : room.color;
+                ctx.lineWidth = isSelected ? 3 : 2;
                 ctx.fillRect(room.x, room.y, room.width, room.height);
                 ctx.strokeRect(room.x, room.y, room.width, room.height);
+                
+                // Selection handles for selected room
+                if (isSelected) {
+                    const handles = [
+                        { x: room.x, y: room.y },
+                        { x: room.x + room.width, y: room.y },
+                        { x: room.x, y: room.y + room.height },
+                        { x: room.x + room.width, y: room.y + room.height }
+                    ];
+                    handles.forEach(h => {
+                        ctx.fillStyle = '#e91e63';
+                        ctx.fillRect(h.x - 5, h.y - 5, 10, 10);
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(h.x - 5, h.y - 5, 10, 10);
+                    });
+                }
                 
                 // Calculate m² (convert pixels to meters using pixelsPerMeter)
                 const widthM = room.width / state.pixelsPerMeter;
@@ -2366,7 +2388,7 @@
                 const areaM2 = widthM * heightM;
                 
                 // Room label with area
-                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillStyle = isSelected ? 'rgba(233, 30, 99, 0.9)' : 'rgba(0,0,0,0.7)';
                 const labelText = room.name;
                 const areaText = `${areaM2.toFixed(2)} m²`;
                 ctx.font = 'bold 14px Arial';
@@ -2604,7 +2626,7 @@
             }
             
             if (state.currentTool === 'select') {
-                // Check if clicking on element
+                // Check if clicking on element first
                 const clickedElement = state.elements.find(el => {
                     const dist = Math.sqrt((el.x - coords.x) ** 2 + (el.y - coords.y) ** 2);
                     return dist < 20;
@@ -2612,18 +2634,42 @@
                 
                 if (clickedElement) {
                     state.selectedElement = clickedElement;
+                    state.selectedRoom = null;
                     state.isDragging = true;
                     showPropertiesPanel(clickedElement);
                     render();
-                } else {
-                    // No element clicked - start panning with left mouse
-                    state.selectedElement = null;
-                    hidePropertiesPanel();
-                    state.isPanning = true;
-                    state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
-                    canvas.style.cursor = 'grabbing';
-                    render();
+                    return;
                 }
+                
+                // Check if clicking on a room
+                const clickedRoom = state.rooms.find(room => 
+                    coords.x >= room.x && coords.x <= room.x + room.width &&
+                    coords.y >= room.y && coords.y <= room.y + room.height
+                );
+                
+                if (clickedRoom) {
+                    state.selectedRoom = clickedRoom;
+                    state.selectedElement = null;
+                    state.isDraggingRoom = true;
+                    state.roomDragOffset = {
+                        x: coords.x - clickedRoom.x,
+                        y: coords.y - clickedRoom.y
+                    };
+                    hidePropertiesPanel();
+                    showRoomPropertiesPanel(clickedRoom);
+                    render();
+                    return;
+                }
+                
+                // Nothing clicked - start panning
+                state.selectedElement = null;
+                state.selectedRoom = null;
+                hidePropertiesPanel();
+                hideRoomPropertiesPanel();
+                state.isPanning = true;
+                state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
+                canvas.style.cursor = 'grabbing';
+                render();
             } else if (state.currentTool === 'pan') {
                 state.isPanning = true;
                 state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
@@ -2682,6 +2728,14 @@
                 state.selectedElement.x = newX;
                 state.selectedElement.y = newY;
                 updatePropertiesPanel();
+                render();
+            } else if (state.isDraggingRoom && state.selectedRoom && state.roomDragOffset) {
+                // Drag room
+                let newX = coords.x - state.roomDragOffset.x;
+                let newY = coords.y - state.roomDragOffset.y;
+                
+                state.selectedRoom.x = newX;
+                state.selectedRoom.y = newY;
                 render();
             } else if (state.isPanning) {
                 state.panX = e.clientX - state.panStart.x;
@@ -2770,6 +2824,13 @@
                 state.isDrawingLine = false;
                 state.lineStart = null;
                 state.lineCurrent = null;
+            }
+            
+            // Finish room dragging
+            if (state.isDraggingRoom && state.selectedRoom) {
+                state.isDraggingRoom = false;
+                state.roomDragOffset = null;
+                updateRoomList();
             }
             
             state.isDragging = false;
@@ -3815,6 +3876,96 @@
                 render();
                 updateElementList();
                 updateElementCount();
+            }
+            // Also handle room deletion with Delete key
+            if (state.selectedRoom) {
+                deleteRoom();
+            }
+        }
+        
+        // =============================================
+        // ROOM ACTIONS
+        // =============================================
+        function showRoomPropertiesPanel(room) {
+            // Create or update room properties panel
+            let panel = document.getElementById('roomPropertiesPanel');
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'roomPropertiesPanel';
+                panel.className = 'properties-panel';
+                panel.style.cssText = 'position:fixed;right:300px;top:100px;background:#2a2a2a;padding:15px;border-radius:8px;border:1px solid #e91e63;z-index:1000;min-width:200px;';
+                document.body.appendChild(panel);
+            }
+            
+            const widthM = (room.width / state.pixelsPerMeter).toFixed(2);
+            const heightM = (room.height / state.pixelsPerMeter).toFixed(2);
+            const areaM2 = (widthM * heightM).toFixed(2);
+            
+            panel.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <strong style="color:#e91e63;">🏠 Raum</strong>
+                    <button onclick="hideRoomPropertiesPanel()" style="background:none;border:none;color:#888;cursor:pointer;font-size:16px;">×</button>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="color:#888;font-size:11px;">Name</label>
+                    <input type="text" id="roomNameInput" value="${room.name}" 
+                           style="width:100%;background:#333;color:white;border:1px solid #555;padding:5px;border-radius:4px;"
+                           onchange="updateRoomName(this.value)">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="color:#888;font-size:11px;">Farbe</label>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                        ${['#ffeb3b','#4caf50','#2196f3','#9c27b0','#ff5722','#00bcd4','#e91e63','#ff9800'].map(c => 
+                            `<div onclick="updateRoomColor('${c}')" style="width:24px;height:24px;background:${c};border-radius:4px;cursor:pointer;border:${room.color === c ? '2px solid white' : '1px solid #555'};"></div>`
+                        ).join('')}
+                    </div>
+                </div>
+                <div style="color:#888;font-size:11px;margin-bottom:10px;">
+                    Größe: ${widthM} × ${heightM} m<br>
+                    Fläche: <span style="color:#ffc107;font-weight:bold;">${areaM2} m²</span>
+                </div>
+                <button onclick="deleteRoom()" style="width:100%;background:#dc3545;color:white;border:none;padding:8px;border-radius:4px;cursor:pointer;">
+                    <i class="bi bi-trash"></i> Raum löschen
+                </button>
+            `;
+            panel.style.display = 'block';
+        }
+        
+        function hideRoomPropertiesPanel() {
+            const panel = document.getElementById('roomPropertiesPanel');
+            if (panel) panel.style.display = 'none';
+        }
+        
+        function updateRoomName(newName) {
+            if (state.selectedRoom && newName.trim()) {
+                saveHistory();
+                state.selectedRoom.name = newName.trim();
+                render();
+                updateRoomList();
+            }
+        }
+        
+        function updateRoomColor(newColor) {
+            if (state.selectedRoom) {
+                saveHistory();
+                state.selectedRoom.color = newColor;
+                render();
+                showRoomPropertiesPanel(state.selectedRoom);
+                updateRoomList();
+            }
+        }
+        
+        function deleteRoom() {
+            if (state.selectedRoom) {
+                if (confirm(`Raum "${state.selectedRoom.name}" wirklich löschen?`)) {
+                    saveHistory();
+                    state.rooms = state.rooms.filter(r => r.id !== state.selectedRoom.id);
+                    state.selectedRoom = null;
+                    hideRoomPropertiesPanel();
+                    render();
+                    updateRoomList();
+                    showToast('Raum gelöscht', 'info');
+                }
             }
         }
         
