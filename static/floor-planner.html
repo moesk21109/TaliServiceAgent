@@ -1707,36 +1707,37 @@
         };
         
         // Element type to Lexware mapping with default mounting heights (in cm)
+        // minHeight = Mindesthöhe die nicht unterschritten werden darf
         const ELEMENT_CONFIG = {
-            steckdose_schuko: { prefix: 'SD', name: 'Schuko-Steckdose', category: 'Steckdosen', price: 89, color: '#000', height: 30 },
-            steckdose_doppelt: { prefix: 'SD', name: 'Doppelsteckdose', category: 'Steckdosen', price: 109, color: '#000', height: 30 },
-            steckdose_usb: { prefix: 'SD', name: 'Steckdose mit USB', category: 'Steckdosen', price: 119, color: '#000', height: 30 },
-            steckdose_cee16: { prefix: 'CEE', name: 'CEE 16A', category: 'Steckdosen', price: 189, color: '#ff5252', height: 100 },
-            steckdose_cee32: { prefix: 'CEE', name: 'CEE 32A', category: 'Steckdosen', price: 249, color: '#2196f3', height: 100 },
-            steckdose_boden: { prefix: 'BT', name: 'Bodentank', category: 'Steckdosen', price: 289, color: '#000', height: 0 },
-            schalter_aus: { prefix: 'AS', name: 'Ausschalter', category: 'Schalter', price: 79, color: '#000', height: 105 },
-            schalter_wechsel: { prefix: 'WS', name: 'Wechselschalter', category: 'Schalter', price: 95, color: '#000', height: 105 },
-            schalter_kreuz: { prefix: 'KS', name: 'Kreuzschalter', category: 'Schalter', price: 105, color: '#000', height: 105 },
-            schalter_dimmer: { prefix: 'DI', name: 'Dimmer', category: 'Schalter', price: 149, color: '#000', height: 105 },
-            schalter_taster: { prefix: 'TA', name: 'Taster', category: 'Schalter', price: 85, color: '#000', height: 105 },
-            schalter_jalousie: { prefix: 'JT', name: 'Jalousietaster', category: 'Schalter', price: 95, color: '#000', height: 105 },
-            schalter_bewegung: { prefix: 'BM', name: 'Bewegungsmelder', category: 'Schalter', price: 129, color: '#000', height: 220 },
-            licht_decke: { prefix: 'LA', name: 'Deckenauslass', category: 'Beleuchtung', price: 75, color: '#000', height: 0 },
-            licht_wand: { prefix: 'WA', name: 'Wandauslass', category: 'Beleuchtung', price: 75, color: '#000', height: 180 },
-            licht_spot: { prefix: 'SP', name: 'Einbaustrahler', category: 'Beleuchtung', price: 95, color: '#000', height: 0 },
-            licht_aussen: { prefix: 'AL', name: 'Außenleuchte', category: 'Beleuchtung', price: 110, color: '#000', height: 250 },
-            licht_notaus: { prefix: 'NA', name: 'Notausgangsleuchte', category: 'Beleuchtung', price: 180, color: '#4caf50', height: 220 },
-            anschluss_herd: { prefix: 'HA', name: 'Herdanschluss', category: 'Anschlüsse', price: 189, color: '#000', height: 30 },
-            anschluss_dunst: { prefix: 'DA', name: 'Dunstabzug', category: 'Anschlüsse', price: 95, color: '#000', height: 200 },
-            anschluss_spuel: { prefix: 'SPA', name: 'Spülmaschine', category: 'Anschlüsse', price: 95, color: '#000', height: 30 },
-            anschluss_wasch: { prefix: 'WMA', name: 'Waschmaschine', category: 'Anschlüsse', price: 95, color: '#000', height: 30 },
-            anschluss_netzwerk: { prefix: 'NW', name: 'Netzwerk RJ45', category: 'Anschlüsse', price: 85, color: '#000', height: 30 },
-            anschluss_tv: { prefix: 'TV', name: 'TV-Anschluss', category: 'Anschlüsse', price: 79, color: '#000', height: 30 },
-            anschluss_telefon: { prefix: 'TEL', name: 'Telefon TAE', category: 'Anschlüsse', price: 79, color: '#000', height: 30 },
-            rauchmelder: { prefix: 'RM', name: 'Rauchmelder', category: 'Sonstiges', price: 65, color: '#ff5252', height: 0 },
-            thermostat: { prefix: 'TH', name: 'Thermostat', category: 'Sonstiges', price: 120, color: '#000', height: 150 },
-            tuerklingel: { prefix: 'TK', name: 'Türklingel', category: 'Sonstiges', price: 85, color: '#000', height: 105 },
-            gegensprech: { prefix: 'GS', name: 'Gegensprechanlage', category: 'Sonstiges', price: 180, color: '#000', height: 150 },
+            steckdose_schuko: { prefix: 'SD', name: 'Schuko-Steckdose', category: 'Steckdosen', price: 89, color: '#000', height: 30, minHeight: 15 },
+            steckdose_doppelt: { prefix: 'SD', name: 'Doppelsteckdose', category: 'Steckdosen', price: 109, color: '#000', height: 30, minHeight: 15 },
+            steckdose_usb: { prefix: 'SD', name: 'Steckdose mit USB', category: 'Steckdosen', price: 119, color: '#000', height: 30, minHeight: 15 },
+            steckdose_cee16: { prefix: 'CEE', name: 'CEE 16A', category: 'Steckdosen', price: 189, color: '#ff5252', height: 100, minHeight: 50 },
+            steckdose_cee32: { prefix: 'CEE', name: 'CEE 32A', category: 'Steckdosen', price: 249, color: '#2196f3', height: 100, minHeight: 50 },
+            steckdose_boden: { prefix: 'BT', name: 'Bodentank', category: 'Steckdosen', price: 289, color: '#000', height: 0, minHeight: 0 },
+            schalter_aus: { prefix: 'AS', name: 'Ausschalter', category: 'Schalter', price: 79, color: '#000', height: 105, minHeight: 85 },
+            schalter_wechsel: { prefix: 'WS', name: 'Wechselschalter', category: 'Schalter', price: 95, color: '#000', height: 105, minHeight: 85 },
+            schalter_kreuz: { prefix: 'KS', name: 'Kreuzschalter', category: 'Schalter', price: 105, color: '#000', height: 105, minHeight: 85 },
+            schalter_dimmer: { prefix: 'DI', name: 'Dimmer', category: 'Schalter', price: 149, color: '#000', height: 105, minHeight: 85 },
+            schalter_taster: { prefix: 'TA', name: 'Taster', category: 'Schalter', price: 85, color: '#000', height: 105, minHeight: 85 },
+            schalter_jalousie: { prefix: 'JT', name: 'Jalousietaster', category: 'Schalter', price: 95, color: '#000', height: 105, minHeight: 85 },
+            schalter_bewegung: { prefix: 'BM', name: 'Bewegungsmelder', category: 'Schalter', price: 129, color: '#000', height: 220, minHeight: 180 },
+            licht_decke: { prefix: 'LA', name: 'Deckenauslass', category: 'Beleuchtung', price: 75, color: '#000', height: 0, minHeight: 0 },
+            licht_wand: { prefix: 'WA', name: 'Wandauslass', category: 'Beleuchtung', price: 75, color: '#000', height: 180, minHeight: 120 },
+            licht_spot: { prefix: 'SP', name: 'Einbaustrahler', category: 'Beleuchtung', price: 95, color: '#000', height: 0, minHeight: 0 },
+            licht_aussen: { prefix: 'AL', name: 'Außenleuchte', category: 'Beleuchtung', price: 110, color: '#000', height: 250, minHeight: 200 },
+            licht_notaus: { prefix: 'NA', name: 'Notausgangsleuchte', category: 'Beleuchtung', price: 180, color: '#4caf50', height: 220, minHeight: 200 },
+            anschluss_herd: { prefix: 'HA', name: 'Herdanschluss', category: 'Anschlüsse', price: 189, color: '#000', height: 30, minHeight: 10 },
+            anschluss_dunst: { prefix: 'DA', name: 'Dunstabzug', category: 'Anschlüsse', price: 95, color: '#000', height: 200, minHeight: 180 },
+            anschluss_spuel: { prefix: 'SPA', name: 'Spülmaschine', category: 'Anschlüsse', price: 95, color: '#000', height: 30, minHeight: 10 },
+            anschluss_wasch: { prefix: 'WMA', name: 'Waschmaschine', category: 'Anschlüsse', price: 95, color: '#000', height: 30, minHeight: 10 },
+            anschluss_netzwerk: { prefix: 'NW', name: 'Netzwerk RJ45', category: 'Anschlüsse', price: 85, color: '#000', height: 30, minHeight: 15 },
+            anschluss_tv: { prefix: 'TV', name: 'TV-Anschluss', category: 'Anschlüsse', price: 79, color: '#000', height: 30, minHeight: 15 },
+            anschluss_telefon: { prefix: 'TEL', name: 'Telefon TAE', category: 'Anschlüsse', price: 79, color: '#000', height: 30, minHeight: 15 },
+            rauchmelder: { prefix: 'RM', name: 'Rauchmelder', category: 'Sonstiges', price: 65, color: '#ff5252', height: 0, minHeight: 0 },
+            thermostat: { prefix: 'TH', name: 'Thermostat', category: 'Sonstiges', price: 120, color: '#000', height: 150, minHeight: 100 },
+            tuerklingel: { prefix: 'TK', name: 'Türklingel', category: 'Sonstiges', price: 85, color: '#000', height: 105, minHeight: 85 },
+            gegensprech: { prefix: 'GS', name: 'Gegensprechanlage', category: 'Sonstiges', price: 180, color: '#000', height: 150, minHeight: 100 },
         };
         
         // Symbol drawing functions for canvas - JetPlan Style
@@ -2624,9 +2625,13 @@
             let snapY = y;
             let snapped = false;
             
+            // Distance thresholds
+            const groupSnapDistance = 80;  // Snap to existing group if within this distance
+            const newGroupDistance = 120;  // Create new group if further than this
+            
             // Find closest element to snap to
             let closestEl = null;
-            let closestDist = snapDistance;
+            let closestDist = Infinity;
             
             state.elements.forEach(el => {
                 const dist = Math.sqrt(Math.pow(el.x - x, 2) + Math.pow(el.y - y, 2));
@@ -2636,8 +2641,9 @@
                 }
             });
             
-            if (closestEl) {
-                // Find the bottom-most element in this group
+            // Only snap if close enough (otherwise create new group position)
+            if (closestEl && closestDist < groupSnapDistance) {
+                // Find the bottom-most element in this column/group
                 const groupElements = state.elements.filter(el => {
                     return Math.abs(el.x - closestEl.x) < 30;
                 });
@@ -2651,6 +2657,7 @@
                 snapY = bottomEl.y + SYMBOL_SIZE + 8;
                 snapped = true;
             }
+            // If distance > newGroupDistance, element stays at drop position (new group)
             
             // Generate unique ID
             const prefix = config.prefix;
@@ -2660,6 +2667,9 @@
             state.elementCounts[prefix]++;
             const code = `${prefix}${String(state.elementCounts[prefix]).padStart(2, '0')}`;
             
+            // Ensure height is at least the minimum
+            const elementHeight = Math.max(config.height || 30, config.minHeight || 0);
+            
             const element = {
                 id: Date.now(),
                 type: type,
@@ -2668,7 +2678,7 @@
                 x: snapX,
                 y: snapY,
                 rotation: 0,  // 0, 90, 180, 270 degrees
-                height: config.height || 30,  // Mounting height in cm
+                height: elementHeight,  // Mounting height in cm (respects minHeight)
                 room: room,
                 floor: document.getElementById('floorSelect')?.value || 'EG',
                 category: config.category,
@@ -3321,11 +3331,59 @@
                 updateRoomList();
             }
             
+            // Snap element back to group after dragging
+            if (state.isDragging && state.selectedElement) {
+                snapElementToGroup(state.selectedElement);
+            }
+            
             state.isDragging = false;
             state.isPanning = false;
             state.isDrawing = false;
             updateCursor();
             render();
+        }
+        
+        // Snap element to nearest group or align in its group
+        function snapElementToGroup(element) {
+            const snapDistance = 80; // Distance to snap to existing group
+            const groupGap = 150; // Distance beyond which a NEW group is created
+            
+            // Find closest element (not self)
+            let closestEl = null;
+            let closestDist = Infinity;
+            
+            state.elements.forEach(el => {
+                if (el.id === element.id) return;
+                const dist = Math.sqrt(Math.pow(el.x - element.x, 2) + Math.pow(el.y - element.y, 2));
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestEl = el;
+                }
+            });
+            
+            // If close enough to another element, snap to its group
+            if (closestEl && closestDist < snapDistance) {
+                // Find all elements in that column (same X within tolerance)
+                const columnElements = state.elements.filter(el => 
+                    Math.abs(el.x - closestEl.x) < 30 && el.id !== element.id
+                ).sort((a, b) => a.y - b.y);
+                
+                // Align X to the column
+                element.x = closestEl.x;
+                
+                // Find correct Y position (insert in order)
+                if (element.y < columnElements[0]?.y) {
+                    // Place at top
+                    element.y = columnElements[0].y - SYMBOL_SIZE - 8;
+                } else {
+                    // Place at bottom
+                    const bottomEl = columnElements[columnElements.length - 1];
+                    element.y = bottomEl.y + SYMBOL_SIZE + 8;
+                }
+                
+                showToast('In Gruppe eingerastet', 'info');
+            }
+            // If further than groupGap, it's a new group (no snapping needed)
         }
         
         function onCanvasWheel(e) {
@@ -3499,7 +3557,12 @@
             document.getElementById('propX').value = Math.round(element.x);
             document.getElementById('propY').value = Math.round(element.y);
             document.getElementById('propRotation').value = element.rotation || 0;
-            document.getElementById('propHeight').value = element.height || config?.height || 30;
+            
+            // Set height with min attribute
+            const heightInput = document.getElementById('propHeight');
+            heightInput.value = element.height || config?.height || 30;
+            heightInput.min = config?.minHeight || 0;
+            heightInput.title = config?.minHeight ? `Mindesthöhe: ${config.minHeight} cm` : '';
             
             // Update rotation buttons
             updateRotationButtons(element.rotation || 0);
@@ -3517,7 +3580,11 @@
             document.getElementById('propX').value = Math.round(state.selectedElement.x);
             document.getElementById('propY').value = Math.round(state.selectedElement.y);
             document.getElementById('propRotation').value = state.selectedElement.rotation || 0;
-            document.getElementById('propHeight').value = state.selectedElement.height || config?.height || 30;
+            
+            const heightInput = document.getElementById('propHeight');
+            heightInput.value = state.selectedElement.height || config?.height || 30;
+            heightInput.min = config?.minHeight || 0;
+            
             updateRotationButtons(state.selectedElement.rotation || 0);
         }
         
@@ -3531,10 +3598,33 @@
         
         function updateElementHeight() {
             if (!state.selectedElement) return;
-            const height = parseInt(document.getElementById('propHeight').value) || 30;
+            
+            const config = ELEMENT_CONFIG[state.selectedElement.type];
+            const minHeight = config?.minHeight || 0;
+            let height = parseInt(document.getElementById('propHeight').value) || config?.height || 30;
+            
+            // Enforce minimum height
+            if (height < minHeight) {
+                height = minHeight;
+                document.getElementById('propHeight').value = height;
+                showToast(`Mindesthöhe für ${config?.name || 'Element'}: ${minHeight} cm`, 'warning');
+            }
+            
             state.selectedElement.height = height;
             render();
             showToast(`Montagehöhe: ${height} cm`, 'info');
+        }
+        
+        function validateElementHeight(element) {
+            // Ensure element height doesn't go below minimum
+            const config = ELEMENT_CONFIG[element.type];
+            const minHeight = config?.minHeight || 0;
+            
+            if (element.height < minHeight) {
+                element.height = minHeight;
+                return false; // Was invalid
+            }
+            return true; // Valid
         }
         
         function updateElementPosition() {
