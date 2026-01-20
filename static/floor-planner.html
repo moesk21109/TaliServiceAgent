@@ -835,6 +835,7 @@
             <button onclick="generateQuotation()" class="btn-success" style="background: #28a745;">
                 <i class="bi bi-file-text"></i> Angebot erstellen
             </button>
+            <button onclick="showProjectList()"><i class="bi bi-folder-open"></i> Laden</button>
             <button onclick="saveProject()"><i class="bi bi-save"></i> Speichern</button>
         </div>
     </header>
@@ -1449,6 +1450,9 @@
             isDrawing: false,
             drawStart: null,
             elementCounts: {},
+            // Project tracking
+            currentProjectId: null,
+            currentFloorId: null,
             // Grid settings
             gridEnabled: true,
             snapToGrid: false,  // Disabled for free positioning
@@ -2055,17 +2059,76 @@
         
         function updateElementList() {
             const tbody = document.getElementById('elementListBody');
-            tbody.innerHTML = state.elements.map(el => `
-                <tr>
-                    <td><i class="bi bi-star text-muted"></i></td>
-                    <td>${el.icon}</td>
-                    <td>${el.name}</td>
-                    <td>${el.category}</td>
-                    <td>${el.floor}</td>
-                    <td>${el.room}</td>
-                    <td><span class="badge bg-secondary">${el.code}</span></td>
+            const floorName = document.getElementById('floorSelect')?.value || 'EG';
+            
+            tbody.innerHTML = state.elements.map((el, index) => {
+                // Get config for this element
+                const config = ELEMENT_CONFIG[el.type] || {};
+                const category = config.category || 'Sonstiges';
+                
+                // Find which room this element is in
+                let roomName = '-';
+                for (const room of state.rooms) {
+                    if (el.x >= room.x && el.x <= room.x + room.width &&
+                        el.y >= room.y && el.y <= room.y + room.height) {
+                        roomName = room.name;
+                        break;
+                    }
+                }
+                
+                // Get symbol icon
+                const symbolIcon = getElementSymbolHTML(el.type);
+                
+                return `
+                <tr onclick="selectElementFromList(${index})" style="cursor:pointer;">
+                    <td><i class="bi bi-star${el.favorite ? '-fill text-warning' : ' text-muted'}"></i></td>
+                    <td>${symbolIcon}</td>
+                    <td>${el.name || config.name}</td>
+                    <td><span class="badge" style="background:${getCategoryColor(category)}">${category}</span></td>
+                    <td>${floorName}</td>
+                    <td>${roomName}</td>
+                    <td><span class="badge bg-primary">${el.code}</span></td>
                 </tr>
-            `).join('');
+            `}).join('');
+            
+            // Update element count
+            document.getElementById('elementCount').textContent = state.elements.length + ' Elemente';
+        }
+        
+        function getElementSymbolHTML(type) {
+            const symbols = {
+                'steckdose_schuko': '⏺', 'steckdose_doppelt': '⏺⏺', 'steckdose_usb': '⏺U',
+                'steckdose_cee16': '▲', 'steckdose_cee32': '▲',
+                'schalter_aus': '○', 'schalter_wechsel': '◐', 'schalter_kreuz': '◑',
+                'schalter_dimmer': '◕', 'schalter_taster': '●', 'schalter_jalousie': '⬍',
+                'licht_decke': '✕', 'licht_wand': '⌐', 'licht_spot': '◎', 'licht_aussen': '☼',
+                'herdanschluss': '⧈', 'tv_anschluss': '📺', 'netzwerk': '⬚', 'telefon': '☎',
+                'rauchmelder': '⚠'
+            };
+            return `<span style="font-family:monospace;font-size:14px;">${symbols[type] || '•'}</span>`;
+        }
+        
+        function getCategoryColor(category) {
+            const colors = {
+                'Steckdosen': '#3498db',
+                'Schalter': '#e67e22',
+                'Beleuchtung': '#f1c40f',
+                'Anschlüsse': '#9b59b6',
+                'Sicherheit': '#e74c3c'
+            };
+            return colors[category] || '#95a5a6';
+        }
+        
+        function selectElementFromList(index) {
+            state.selectedElement = state.elements[index];
+            updatePropertiesPanel();
+            render();
+            
+            // Pan to element
+            const el = state.elements[index];
+            state.panX = canvas.width / 2 - el.x * state.zoom;
+            state.panY = canvas.height / 2 - el.y * state.zoom;
+            render();
         }
         
         // =============================================
@@ -2887,17 +2950,183 @@
             document.getElementById('listsPanel').classList.remove('show');
         }
         
-        function showTabContent(tab) {
+        async function showTabContent(tab) {
             const content = document.getElementById('tabContent');
             
             if (tab === 'elements') {
+                // Show element table
+                content.innerHTML = `
+                    <table class="list-table" id="elementListTable">
+                        <thead>
+                            <tr>
+                                <th>⭐</th>
+                                <th>Symbol</th>
+                                <th>Elementname</th>
+                                <th>Kategorie</th>
+                                <th>Stock</th>
+                                <th>Raum</th>
+                                <th>Kennung</th>
+                            </tr>
+                        </thead>
+                        <tbody id="elementListBody"></tbody>
+                    </table>
+                `;
                 updateElementList();
             } else if (tab === 'materials') {
-                // Group by type
+                // Group by type with real prices
                 const materials = {};
                 state.elements.forEach(el => {
+                    const config = ELEMENT_CONFIG[el.type] || {};
                     if (!materials[el.type]) {
-                        materials[el.type] = { name: el.name, count: 0, price: el.price };
+                        materials[el.type] = { 
+                            name: config.name || el.name, 
+                            count: 0, 
+                            price: config.price || 0 
+                        };
+                    }
+                    materials[el.type].count++;
+                });
+                
+                const total = Object.values(materials).reduce((sum, m) => sum + m.count * m.price, 0);
+                
+                content.innerHTML = `
+                    <table class="list-table">
+                        <thead>
+                            <tr>
+                                <th>Artikel</th>
+                                <th style="text-align:center;">Anzahl</th>
+                                <th style="text-align:right;">Einzelpreis</th>
+                                <th style="text-align:right;">Gesamtpreis</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(materials).map(([type, m]) => `
+                                <tr>
+                                    <td>${m.name}</td>
+                                    <td style="text-align:center;">${m.count} Stk</td>
+                                    <td style="text-align:right;">${m.price.toFixed(2)} €</td>
+                                    <td style="text-align:right;">${(m.count * m.price).toFixed(2)} €</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight:bold; background:#1a1a2e;">
+                                <td colspan="3">GESAMT NETTO</td>
+                                <td style="text-align:right;">${total.toFixed(2)} €</td>
+                            </tr>
+                            <tr style="color:#888;">
+                                <td colspan="3">+ 19% MwSt</td>
+                                <td style="text-align:right;">${(total * 0.19).toFixed(2)} €</td>
+                            </tr>
+                            <tr style="font-weight:bold; font-size:1.1em; background:#2a2a4e;">
+                                <td colspan="3">GESAMT BRUTTO</td>
+                                <td style="text-align:right;">${(total * 1.19).toFixed(2)} €</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+            } else if (tab === 'positions') {
+                // Show installation positions (labor)
+                const positions = {};
+                let posNum = 1;
+                
+                // Baustelleneinrichtung
+                const positionsArray = [{
+                    pos: posNum++,
+                    name: 'Baustelleneinrichtung Elektro',
+                    quantity: 1,
+                    unit: 'psch',
+                    price: 119.00
+                }];
+                
+                state.elements.forEach(el => {
+                    const config = ELEMENT_CONFIG[el.type] || {};
+                    if (!positions[el.type]) {
+                        positions[el.type] = { 
+                            name: config.name + ' anschließen', 
+                            count: 0, 
+                            price: config.price || 0 
+                        };
+                    }
+                    positions[el.type].count++;
+                });
+                
+                Object.entries(positions).forEach(([type, p]) => {
+                    positionsArray.push({
+                        pos: posNum++,
+                        name: p.name,
+                        quantity: p.count,
+                        unit: 'Stk',
+                        price: p.price
+                    });
+                });
+                
+                // Prüfprotokoll
+                positionsArray.push({
+                    pos: posNum,
+                    name: 'Prüfprotokoll nach DIN VDE',
+                    quantity: 1,
+                    unit: 'psch',
+                    price: 120.00
+                });
+                
+                const totalNet = positionsArray.reduce((sum, p) => sum + p.quantity * p.price, 0);
+                
+                content.innerHTML = `
+                    <table class="list-table">
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Bezeichnung</th>
+                                <th style="text-align:center;">Menge</th>
+                                <th>Einheit</th>
+                                <th style="text-align:right;">EP</th>
+                                <th style="text-align:right;">GP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${positionsArray.map(p => `
+                                <tr>
+                                    <td>${p.pos}</td>
+                                    <td>${p.name}</td>
+                                    <td style="text-align:center;">${p.quantity}</td>
+                                    <td>${p.unit}</td>
+                                    <td style="text-align:right;">${p.price.toFixed(2)} €</td>
+                                    <td style="text-align:right;">${(p.quantity * p.price).toFixed(2)} €</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight:bold; background:#1a1a2e;">
+                                <td colspan="5">NETTO</td>
+                                <td style="text-align:right;">${totalNet.toFixed(2)} €</td>
+                            </tr>
+                            <tr style="color:#888;">
+                                <td colspan="5">+ 19% MwSt</td>
+                                <td style="text-align:right;">${(totalNet * 0.19).toFixed(2)} €</td>
+                            </tr>
+                            <tr style="font-weight:bold; font-size:1.1em; background:#28a745; color:white;">
+                                <td colspan="5">BRUTTO</td>
+                                <td style="text-align:right;">${(totalNet * 1.19).toFixed(2)} €</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-success" onclick="generateQuotation()">
+                            <i class="bi bi-file-text me-2"></i>Angebot in Lexware erstellen
+                        </button>
+                    </div>
+                `;
+            } else if (tab === 'orders') {
+                // Bestellliste (Material to order)
+                const materials = {};
+                state.elements.forEach(el => {
+                    const config = ELEMENT_CONFIG[el.type] || {};
+                    if (!materials[el.type]) {
+                        materials[el.type] = { 
+                            name: config.name || el.name, 
+                            count: 0
+                        };
                     }
                     materials[el.type].count++;
                 });
@@ -2905,30 +3134,38 @@
                 content.innerHTML = `
                     <table class="list-table">
                         <thead>
-                            <tr><th>Artikel</th><th>Anzahl</th><th>EP</th><th>GP</th></tr>
+                            <tr>
+                                <th>☐</th>
+                                <th>Artikel</th>
+                                <th style="text-align:center;">Menge</th>
+                                <th>Einheit</th>
+                                <th>Lieferant</th>
+                            </tr>
                         </thead>
                         <tbody>
-                            ${Object.values(materials).map(m => `
+                            ${Object.entries(materials).map(([type, m]) => `
                                 <tr>
+                                    <td><input type="checkbox"></td>
                                     <td>${m.name}</td>
-                                    <td>${m.count}</td>
-                                    <td>${m.price}€</td>
-                                    <td>${m.count * m.price}€</td>
+                                    <td style="text-align:center;">${m.count}</td>
+                                    <td>Stück</td>
+                                    <td><span class="badge bg-secondary">Auswählen...</span></td>
                                 </tr>
                             `).join('')}
-                            <tr style="font-weight:bold;">
-                                <td colspan="3">GESAMT NETTO</td>
-                                <td>${Object.values(materials).reduce((sum, m) => sum + m.count * m.price, 0)}€</td>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td>NYM-J 3x1,5mm² Kabel</td>
+                                <td style="text-align:center;">${state.elements.length * 10}</td>
+                                <td>Meter</td>
+                                <td><span class="badge bg-secondary">Auswählen...</span></td>
                             </tr>
                         </tbody>
                     </table>
-                `;
-            } else if (tab === 'positions') {
-                content.innerHTML = `
-                    <p class="text-muted">Angebotspositionen werden aus Lexware geladen...</p>
-                    <button class="btn btn-primary" onclick="generateQuotation()">
-                        <i class="bi bi-file-text me-2"></i>Angebot in Lexware erstellen
-                    </button>
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-primary" onclick="showToast('Bestellung wird vorbereitet...', 'info')">
+                            <i class="bi bi-cart me-2"></i>Markierte bestellen
+                        </button>
+                    </div>
                 `;
             }
         }
@@ -3009,21 +3246,198 @@
         // PROJECT SAVE/LOAD
         // =============================================
         async function saveProject() {
+            const projectName = document.getElementById('projectName').textContent;
+            const floorName = document.getElementById('floorSelect')?.value || 'EG';
+            
+            // Get floor plan as base64
+            let floorPlanData = null;
+            let floorPlanType = null;
+            if (state.floorPlanImage) {
+                // Create temp canvas to export floor plan
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = state.floorPlanImage.width;
+                tempCanvas.height = state.floorPlanImage.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(state.floorPlanImage, 0, 0);
+                floorPlanData = tempCanvas.toDataURL('image/png');
+                floorPlanType = 'image/png';
+            }
+            
+            // Prepare rooms data
+            const roomsData = state.rooms.map(room => ({
+                floor_id: 0, // Will be set by backend
+                name: room.name,
+                color: room.color,
+                category: room.category || 'bestand',
+                x: room.x,
+                y: room.y,
+                width: room.width,
+                height: room.height
+            }));
+            
+            // Prepare elements data
+            const elementsData = state.elements.map(el => ({
+                floor_id: 0, // Will be set by backend
+                element_type: el.type,
+                code: el.code || generateCode(el.type),
+                x: el.x,
+                y: el.y,
+                rotation: el.rotation || 0,
+                height: el.height || null,
+                notes: el.notes || null
+            }));
+            
             const projectData = {
-                name: document.getElementById('projectName').textContent,
-                elements: state.elements,
-                rooms: state.rooms,
-                floor: document.getElementById('floorSelect')?.value || 'EG'
+                project: {
+                    name: projectName,
+                    customer_id: null,
+                    address: null,
+                    notes: null
+                },
+                floor: {
+                    project_id: 0, // Will be set by backend
+                    name: floorName,
+                    floor_plan_data: floorPlanData,
+                    floor_plan_type: floorPlanType,
+                    scale_pixels_per_meter: state.pixelsPerMeter
+                },
+                rooms: roomsData,
+                elements: elementsData
             };
             
-            // TODO: Save to backend
-            console.log('Saving project:', projectData);
-            showToast('Projekt gespeichert!', 'success');
+            try {
+                let response;
+                if (state.currentProjectId) {
+                    // Update existing project
+                    response = await fetch(`/api/floor-planner/update-full/${state.currentProjectId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(projectData)
+                    });
+                } else {
+                    // Create new project
+                    response = await fetch('/api/floor-planner/save-full', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(projectData)
+                    });
+                }
+                
+                if (!response.ok) throw new Error('Speichern fehlgeschlagen');
+                
+                const result = await response.json();
+                state.currentProjectId = result.project.id;
+                state.currentFloorId = result.floor.id;
+                
+                showToast(`Projekt "${projectName}" gespeichert! (ID: ${result.project.id})`, 'success');
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('Fehler beim Speichern: ' + error.message, 'warning');
+            }
         }
         
         async function loadProject(projectId) {
-            // TODO: Load from backend
-            console.log('Loading project:', projectId);
+            try {
+                const response = await fetch(`/api/floor-planner/load-full/${projectId}`);
+                if (!response.ok) throw new Error('Projekt nicht gefunden');
+                
+                const data = await response.json();
+                
+                // Set project info
+                state.currentProjectId = data.project.id;
+                state.currentFloorId = data.floor.id;
+                document.getElementById('projectName').textContent = data.project.name;
+                
+                // Load floor plan image
+                if (data.floor.floor_plan_data) {
+                    const img = new Image();
+                    img.onload = () => {
+                        state.floorPlanImage = img;
+                        state.pixelsPerMeter = data.floor.scale_pixels_per_meter || 50;
+                        showCanvas();
+                        
+                        // Load rooms
+                        state.rooms = data.rooms.map(room => ({
+                            id: room.id,
+                            name: room.name,
+                            color: room.color,
+                            category: room.category,
+                            x: room.x,
+                            y: room.y,
+                            width: room.width,
+                            height: room.height
+                        }));
+                        
+                        // Load elements with proper config
+                        state.elements = data.elements.map(el => {
+                            const config = ELEMENT_CONFIG[el.element_type] || {};
+                            return {
+                                id: el.id,
+                                type: el.element_type,
+                                name: config.name || el.element_type,
+                                code: el.code,
+                                x: el.x,
+                                y: el.y,
+                                rotation: el.rotation || 0,
+                                height: el.height,
+                                notes: el.notes,
+                                price: config.price || 0
+                            };
+                        });
+                        
+                        updateElementList();
+                        render();
+                        showToast(`Projekt "${data.project.name}" geladen!`, 'success');
+                    };
+                    img.src = data.floor.floor_plan_data;
+                } else {
+                    showToast('Projekt geladen (kein Grundriss)', 'info');
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+                showToast('Fehler beim Laden: ' + error.message, 'warning');
+            }
+        }
+        
+        async function showProjectList() {
+            try {
+                const response = await fetch('/api/floor-planner/projects');
+                const projects = await response.json();
+                
+                if (projects.length === 0) {
+                    showToast('Keine gespeicherten Projekte', 'info');
+                    return;
+                }
+                
+                // Build list
+                const list = projects.map(p => 
+                    `${p.id}: ${p.name} (${new Date(p.updated_at).toLocaleDateString('de-DE')})`
+                ).join('\n');
+                
+                const id = prompt(`Projekt auswählen (ID eingeben):\n\n${list}`);
+                if (id) {
+                    await loadProject(parseInt(id));
+                }
+            } catch (error) {
+                console.error('List error:', error);
+                showToast('Fehler beim Laden der Projektliste', 'warning');
+            }
+        }
+        
+        function generateCode(elementType) {
+            // Generate unique code like SD01, WS02, etc.
+            const prefixes = {
+                'steckdose_schuko': 'SD', 'steckdose_doppelt': 'SD', 'steckdose_usb': 'SD',
+                'steckdose_cee16': 'CEE', 'steckdose_cee32': 'CEE',
+                'ausschalter': 'AS', 'wechselschalter': 'WS', 'kreuzschalter': 'KS',
+                'dimmer': 'DI', 'taster': 'TA', 'jalousietaster': 'JT',
+                'deckenauslass': 'LA', 'wandauslass': 'LA', 'einbaustrahler': 'ES', 'aussenleuchte': 'AL',
+                'herdanschluss': 'HA', 'tv_anschluss': 'TV', 'netzwerk': 'NW', 'telefon': 'TF',
+                'rauchmelder': 'RM'
+            };
+            const prefix = prefixes[elementType] || 'EL';
+            const count = state.elements.filter(e => e.type === elementType).length + 1;
+            return `${prefix}${String(count).padStart(2, '0')}`;
         }
         
         // =============================================

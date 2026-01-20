@@ -21,6 +21,7 @@ print(f"[STARTUP] LEXWARE_API_KEY={'***' + os.getenv('LEXWARE_API_KEY', '')[-5:]
 
 from app.db import init_db
 from app.routers import customers, documents, chat, general_chat
+from app.routers import floor_planner
 
 # Initialize database
 init_db()
@@ -90,6 +91,7 @@ app.include_router(customers.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
 app.include_router(general_chat.router)
+app.include_router(floor_planner.router)
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
