@@ -907,6 +907,10 @@
                 <button class="zoom-btn" onclick="zoomFit()"><i class="bi bi-arrows-fullscreen"></i></button>
                 <button class="zoom-btn" onclick="toggleGrid()" title="Raster ein/aus"><i class="bi bi-grid-3x3"></i></button>
                 <button class="zoom-btn" onclick="toggleGridSettings()" title="Raster-Einstellungen"><i class="bi bi-gear"></i></button>
+                <div style="width:1px; height:20px; background:#555; margin:4px 0;"></div>
+                <button class="zoom-btn" onclick="showReferenceDialog()" title="Maßstab definieren" style="color: #ffc107;">
+                    <i class="bi bi-rulers"></i>
+                </button>
             </div>
             
             <!-- Grid Settings Panel -->
@@ -988,27 +992,33 @@
             <!-- Measure/Reference Dialog -->
             <div class="measure-dialog" id="measureDialog">
                 <button class="close-btn" onclick="closeMeasureDialog()">&times;</button>
-                <h4><i class="bi bi-info-circle-fill"></i> Referenzstrecke definieren</h4>
+                <h4><i class="bi bi-rulers text-primary"></i> Maßstab definieren</h4>
                 <div class="measure-steps">
-                    <p>1. Bitte zunächst eine Referenzstrecke aufziehen.</p>
-                    <p>2. Die Länge eingeben und speichern.</p>
+                    <p><strong>Schritt 1:</strong> Zeichnen Sie eine Linie auf dem Grundriss entlang einer bekannten Strecke (z.B. Wandlänge, Türbreite).</p>
+                    <p><strong>Schritt 2:</strong> Geben Sie die echte Länge in Metern ein.</p>
                 </div>
                 <div class="measure-line-info" id="measureLineInfo" style="display: none;">
-                    Gezeichnete Strecke: <span id="measurePixelLength">0</span> Pixel
+                    📏 Gezeichnete Strecke: <span id="measurePixelLength">0</span> Pixel
                 </div>
                 <div class="measure-tips">
-                    <strong>Tipps:</strong>
+                    <strong>💡 Tipps:</strong>
                     <ul>
-                        <li>Nutze eine möglichst große bekannte Strecke.</li>
-                        <li>Zoome rein, um die Referenzpunkte präziser zu setzen.</li>
+                        <li>Wählen Sie eine möglichst lange Strecke für bessere Genauigkeit</li>
+                        <li>Zoomen Sie rein für präzisere Punkte</li>
+                        <li>Nutzen Sie Maße aus dem Grundriss-PDF (z.B. "3,00m")</li>
                     </ul>
                 </div>
                 <div class="measure-input-row">
-                    <input type="number" id="measureRealLength" placeholder="Echte Länge" step="0.01" min="0.01">
-                    <span>m</span>
+                    <input type="number" id="measureRealLength" placeholder="z.B. 3.00" step="0.01" min="0.01">
+                    <span>Meter</span>
                     <button onclick="saveReferenceScale()">
                         <i class="bi bi-check-lg me-1"></i>Speichern
                     </button>
+                </div>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #444;">
+                    <small class="text-muted">
+                        <i class="bi bi-mouse me-1"></i> Klicken + Ziehen = Linie zeichnen
+                    </small>
                 </div>
             </div>
         </div>
@@ -2846,6 +2856,13 @@
             
             zoomFit();
             showToast('Grundriss geladen!', 'success');
+            
+            // Auto-show reference scale dialog after loading
+            setTimeout(() => {
+                if (confirm('Möchten Sie jetzt die Referenzstrecke definieren?\n\nDies ermöglicht präzise Maßangaben.')) {
+                    showReferenceDialog();
+                }
+            }, 500);
         }
         
         // =============================================
