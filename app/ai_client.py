@@ -25,6 +25,39 @@ class AIClient:
         from app.lexware_client import lexware_client
         self.lexware = lexware_client
     
+    def _track_api_usage(self, provider: str, model: str, endpoint: str, 
+                        tokens_used: Optional[int] = None, 
+                        success: bool = True, 
+                        error_message: Optional[str] = None):
+        """Track API usage in database."""
+        try:
+            from app.db import get_session
+            from app.models import APIUsage
+            from sqlmodel import Session
+            
+            # Use context manager for proper session handling
+            try:
+                session = next(get_session())
+                try:
+                    usage = APIUsage(
+                        provider=provider,
+                        model=model,
+                        endpoint=endpoint,
+                        tokens_used=tokens_used,
+                        request_successful=success,
+                        error_message=error_message
+                    )
+                    session.add(usage)
+                    session.commit()
+                finally:
+                    session.close()
+            except StopIteration:
+                # Session creation failed - log but don't crash
+                print(f"[AI] Warning: Could not get database session for tracking")
+        except Exception as e:
+            # Don't fail if tracking fails
+            print(f"[AI] Warning: Failed to track API usage: {e}")
+    
     def get_available_tools(self):
         """Define tools/functions that AI can call."""
         return [
@@ -709,6 +742,7 @@ class AIClient:
         print(f"[AI REQUEST] Tool choice: {chosen_tool_choice}")
         
         # Call OpenAI with function calling
+        total_tokens = 0
         try:
             response = self.openai_client.chat.completions.create(
                 model=model,
@@ -721,8 +755,19 @@ class AIClient:
                 temperature=0.7,
                 max_tokens=2000
             )
+            # Track token usage
+            if hasattr(response, 'usage') and response.usage:
+                total_tokens += response.usage.total_tokens
         except Exception as e:
             print(f"[AI] ❌ OPENAI API ERROR: {type(e).__name__}: {str(e)}")
+            # Track failed request
+            self._track_api_usage(
+                provider=provider,
+                model=model,
+                endpoint="chat_with_messages",
+                success=False,
+                error_message=str(e)
+            )
             import traceback
             traceback.print_exc()
             raise  # Re-raise so the calling function can handle it
@@ -788,6 +833,10 @@ class AIClient:
                 max_tokens=2000
             )
             
+            # Track token usage
+            if hasattr(final_response, 'usage') and final_response.usage:
+                total_tokens += final_response.usage.total_tokens
+            
             final_message = final_response.choices[0].message
             
             # Check if AI wants to call MORE tools (e.g., create_invoice after get_lexware_products)
@@ -844,11 +893,44 @@ class AIClient:
                     max_tokens=2000
                 )
                 
+                # Track token usage
+                if hasattr(third_response, 'usage') and third_response.usage:
+                    total_tokens += third_response.usage.total_tokens
+                
                 print(f"[AI] Third response: {third_response.choices[0].message.content[:200]}...")
+                
+                # Track successful request with total tokens
+                self._track_api_usage(
+                    provider=provider,
+                    model=model,
+                    endpoint="chat_with_messages",
+                    tokens_used=total_tokens,
+                    success=True
+                )
+                
                 return third_response.choices[0].message.content
             
             print(f"[AI] Final response: {final_message.content[:200] if final_message.content else 'NO CONTENT'}...")
+            
+            # Track successful request with total tokens
+            self._track_api_usage(
+                provider=provider,
+                model=model,
+                endpoint="chat_with_messages",
+                tokens_used=total_tokens,
+                success=True
+            )
+            
             return final_message.content or ""
+        
+        # Track successful request with total tokens (no tool calls)
+        self._track_api_usage(
+            provider=provider,
+            model=model,
+            endpoint="chat_with_messages",
+            tokens_used=total_tokens,
+            success=True
+        )
         
         return message.content or ""
     

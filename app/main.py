@@ -20,7 +20,7 @@ print(f"[STARTUP] MOCK_LEXWARE={os.getenv('MOCK_LEXWARE')}")
 print(f"[STARTUP] LEXWARE_API_KEY={'***' + os.getenv('LEXWARE_API_KEY', '')[-5:] if os.getenv('LEXWARE_API_KEY') else 'NOT SET'}")
 
 from app.db import init_db
-from app.routers import customers, documents, chat, general_chat
+from app.routers import customers, documents, chat, general_chat, usage
 
 # Initialize database
 init_db()
@@ -90,6 +90,7 @@ app.include_router(customers.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
 app.include_router(general_chat.router)
+app.include_router(usage.router)
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -126,6 +127,12 @@ def live_html():
 def general_chat_html():
     """Serve general chat interface."""
     return FileResponse("static/general-chat.html", media_type="text/html")
+
+
+@app.get("/usage.html")
+def usage_html():
+    """Serve API usage statistics page."""
+    return FileResponse("static/usage.html", media_type="text/html")
 
 
 @app.get("/health")
