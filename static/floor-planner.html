@@ -110,6 +110,7 @@
             background: #0f0f23;
             position: relative;
             overflow: hidden;
+            padding-bottom: 36px; /* Space for status bar */
         }
         
         #floorCanvas {
@@ -123,11 +124,13 @@
             position: absolute;
             bottom: 10px;
             left: 10px;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.85);
             color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
+            padding: 8px 15px;
+            border-radius: 6px;
             font-size: 12px;
+            z-index: 150;
+            border: 1px solid #333;
         }
         
         .zoom-controls {
@@ -136,6 +139,7 @@
             right: 300px;
             display: flex;
             gap: 5px;
+            z-index: 150;
         }
         
         .zoom-btn {
@@ -152,6 +156,86 @@
             background: var(--primary);
         }
         
+        /* Bottom Status Bar */
+        .status-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 36px;
+            background: linear-gradient(to right, #16213e, #1a1a2e);
+            border-top: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            gap: 20px;
+            font-size: 12px;
+            color: #aaa;
+            z-index: 200;
+        }
+        
+        .status-bar .status-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-bar .status-section i {
+            color: var(--primary);
+        }
+        
+        .status-bar .status-divider {
+            width: 1px;
+            height: 20px;
+            background: #444;
+        }
+        
+        .status-bar input[type="number"],
+        .status-bar select {
+            background: #1a1a2e;
+            border: 1px solid #444;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            width: 60px;
+        }
+        
+        .status-bar select {
+            width: auto;
+        }
+        
+        .status-bar label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+        
+        .status-bar input[type="checkbox"] {
+            accent-color: var(--primary);
+        }
+        
+        .status-bar .zoom-btns {
+            display: flex;
+            gap: 3px;
+        }
+        
+        .status-bar .zoom-btns button {
+            width: 26px;
+            height: 26px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .status-bar .zoom-btns button:hover {
+            background: var(--primary);
+        }
+
         /* Right Sidebar - Elements */
         .right-sidebar {
             width: var(--sidebar-width);
@@ -438,6 +522,7 @@
             background: #16213e;
             border-top: 1px solid #333;
             display: none;
+            z-index: 100;
         }
         
         .tabs-panel.show {
@@ -1074,6 +1159,56 @@
                     <small class="text-muted">
                         <i class="bi bi-mouse me-1"></i> Klicken + Ziehen = Linie zeichnen
                     </small>
+                </div>
+            </div>
+            
+            <!-- Status Bar -->
+            <div class="status-bar" id="statusBar" style="display: none;">
+                <div class="status-section">
+                    <i class="bi bi-crosshair"></i>
+                    <span id="statusCoords">X: 0cm | Y: 0cm</span>
+                </div>
+                <div class="status-divider"></div>
+                <div class="status-section">
+                    <label title="Raster anzeigen">
+                        <input type="checkbox" id="statusGridEnabled" checked onchange="updateStatusBarSettings()">
+                        <i class="bi bi-grid-3x3"></i> Raster
+                    </label>
+                </div>
+                <div class="status-section">
+                    <label title="Am Raster einrasten">
+                        <input type="checkbox" id="statusSnapToGrid" onchange="updateStatusBarSettings()">
+                        <i class="bi bi-magnet"></i> Snap
+                    </label>
+                </div>
+                <div class="status-section">
+                    <span>Größe:</span>
+                    <input type="number" id="statusGridSize" value="50" min="10" max="200" onchange="updateStatusBarSettings()">
+                    <span>px</span>
+                </div>
+                <div class="status-divider"></div>
+                <div class="status-section">
+                    <i class="bi bi-rulers"></i>
+                    <select id="statusScale" onchange="updateStatusBarSettings()">
+                        <option value="100">1:100</option>
+                        <option value="50">1:50</option>
+                        <option value="20">1:20</option>
+                    </select>
+                    <button class="btn btn-sm" onclick="showReferenceDialog()" title="Maßstab definieren" style="background:transparent;border:none;color:#ffc107;">
+                        <i class="bi bi-rulers"></i>
+                    </button>
+                </div>
+                <div class="status-divider"></div>
+                <div class="status-section zoom-btns">
+                    <button onclick="zoomOut()" title="Herauszoomen"><i class="bi bi-zoom-out"></i></button>
+                    <span id="statusZoom" style="min-width:45px;text-align:center;">100%</span>
+                    <button onclick="zoomIn()" title="Hineinzoomen"><i class="bi bi-zoom-in"></i></button>
+                    <button onclick="zoomFit()" title="Einpassen"><i class="bi bi-arrows-fullscreen"></i></button>
+                </div>
+                <div style="flex:1"></div>
+                <div class="status-section">
+                    <i class="bi bi-lightning"></i>
+                    <span id="statusElementCount">0 Elemente</span>
                 </div>
             </div>
         </div>
@@ -2335,6 +2470,7 @@
         
         function updateElementCount() {
             document.getElementById('elementCount').textContent = `${state.elements.length} Elemente`;
+            updateStatusElementCount();
         }
         
         function updateElementList() {
@@ -2836,9 +2972,8 @@
         function onCanvasMouseMove(e) {
             const coords = getCanvasCoords(e);
             
-            // Update coordinate display
-            document.getElementById('mouseCoords').textContent = 
-                `X: ${Math.round(coords.x)} | Y: ${Math.round(coords.y)}`;
+            // Update coordinate display in status bar
+            updateStatusCoords(coords.x, coords.y);
             
             if (state.isDragging && state.selectedElement) {
                 let newX = coords.x;
@@ -3027,13 +3162,13 @@
         // =============================================
         function zoomIn() {
             state.zoom = Math.min(5, state.zoom * 1.2);
-            document.getElementById('zoomLevel').textContent = Math.round(state.zoom * 100) + '%';
+            updateZoomDisplay();
             render();
         }
         
         function zoomOut() {
             state.zoom = Math.max(0.1, state.zoom * 0.8);
-            document.getElementById('zoomLevel').textContent = Math.round(state.zoom * 100) + '%';
+            updateZoomDisplay();
             render();
         }
         
@@ -3044,9 +3179,15 @@
                 state.zoom = Math.min(scaleX, scaleY) * 0.9;
                 state.panX = (canvas.width - state.floorPlanImage.width * state.zoom) / 2;
                 state.panY = (canvas.height - state.floorPlanImage.height * state.zoom) / 2;
-                document.getElementById('zoomLevel').textContent = Math.round(state.zoom * 100) + '%';
+                updateZoomDisplay();
                 render();
             }
+        }
+        
+        function updateZoomDisplay() {
+            const zoomText = Math.round(state.zoom * 100) + '%';
+            document.getElementById('zoomLevel').textContent = zoomText;
+            document.getElementById('statusZoom').textContent = zoomText;
         }
         
         // =============================================
@@ -3055,6 +3196,7 @@
         function toggleGrid() {
             state.gridEnabled = !state.gridEnabled;
             document.getElementById('gridEnabled').checked = state.gridEnabled;
+            document.getElementById('statusGridEnabled').checked = state.gridEnabled;
             render();
             showToast(state.gridEnabled ? 'Raster aktiviert' : 'Raster deaktiviert', 'info');
         }
@@ -3069,7 +3211,53 @@
             state.snapToGrid = document.getElementById('snapToGrid').checked;
             state.gridSize = parseInt(document.getElementById('gridSize').value) || 50;
             state.gridScale = parseInt(document.getElementById('gridScale').value) || 100;
+            
+            // Sync with status bar
+            syncStatusBar();
             render();
+        }
+        
+        function updateStatusBarSettings() {
+            // Read from status bar inputs
+            state.gridEnabled = document.getElementById('statusGridEnabled').checked;
+            state.snapToGrid = document.getElementById('statusSnapToGrid').checked;
+            state.gridSize = parseInt(document.getElementById('statusGridSize').value) || 50;
+            state.gridScale = parseInt(document.getElementById('statusScale').value) || 100;
+            
+            // Sync with old grid settings panel
+            document.getElementById('gridEnabled').checked = state.gridEnabled;
+            document.getElementById('snapToGrid').checked = state.snapToGrid;
+            document.getElementById('gridSize').value = state.gridSize;
+            document.getElementById('gridScale').value = state.gridScale;
+            
+            render();
+        }
+        
+        function syncStatusBar() {
+            // Sync status bar with current state
+            document.getElementById('statusGridEnabled').checked = state.gridEnabled;
+            document.getElementById('statusSnapToGrid').checked = state.snapToGrid;
+            document.getElementById('statusGridSize').value = state.gridSize;
+            document.getElementById('statusScale').value = state.gridScale;
+            document.getElementById('statusZoom').textContent = Math.round(state.zoom * 100) + '%';
+            updateStatusElementCount();
+        }
+        
+        function updateStatusElementCount() {
+            const floor = state.currentFloor;
+            const elements = state.floors[floor]?.elements || [];
+            document.getElementById('statusElementCount').textContent = elements.length + ' Elemente';
+            // Also update old element count
+            document.getElementById('elementCount').textContent = elements.length + ' Elemente';
+        }
+        
+        function updateStatusCoords(canvasX, canvasY) {
+            const scale = state.gridScale;
+            const realX = Math.round(canvasX * scale / 100);
+            const realY = Math.round(canvasY * scale / 100);
+            document.getElementById('statusCoords').textContent = `X: ${realX}cm | Y: ${realY}cm`;
+            // Also update old coords display
+            document.getElementById('mouseCoords').textContent = `X: ${realX} | Y: ${realY}`;
         }
         
         // =============================================
@@ -3488,16 +3676,20 @@
             canvas.style.display = 'block';
             document.getElementById('canvasInfo').style.display = 'block';
             document.getElementById('zoomControls').style.display = 'flex';
+            document.getElementById('statusBar').style.display = 'flex';
             
             // Show rulers
             document.getElementById('rulerH').style.display = 'block';
             document.getElementById('rulerV').style.display = 'block';
             document.getElementById('rulerCorner').style.display = 'block';
             
-            // Resize canvas (account for rulers)
+            // Resize canvas (account for rulers and status bar)
             const container = document.getElementById('canvasContainer');
             canvas.width = container.clientWidth - 25;
-            canvas.height = container.clientHeight - 25;
+            canvas.height = container.clientHeight - 25 - 36; // 36px for status bar
+            
+            // Initialize status bar
+            syncStatusBar();
             
             zoomFit();
             showToast('Grundriss geladen!', 'success');
