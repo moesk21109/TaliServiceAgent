@@ -1098,9 +1098,13 @@
                     <label>Richtung:</label>
                     <div class="rotation-btns">
                         <button onclick="setRotation(0)" title="Nach oben" id="rot0"><i class="bi bi-arrow-up"></i></button>
+                        <button onclick="setRotation(45)" title="45°" id="rot45"><i class="bi bi-arrow-up-right"></i></button>
                         <button onclick="setRotation(90)" title="Nach rechts" id="rot90"><i class="bi bi-arrow-right"></i></button>
+                        <button onclick="setRotation(135)" title="135°" id="rot135"><i class="bi bi-arrow-down-right"></i></button>
                         <button onclick="setRotation(180)" title="Nach unten" id="rot180"><i class="bi bi-arrow-down"></i></button>
+                        <button onclick="setRotation(225)" title="225°" id="rot225"><i class="bi bi-arrow-down-left"></i></button>
                         <button onclick="setRotation(270)" title="Nach links" id="rot270"><i class="bi bi-arrow-left"></i></button>
+                        <button onclick="setRotation(315)" title="315°" id="rot315"><i class="bi bi-arrow-up-left"></i></button>
                     </div>
                 </div>
                 <div class="prop-row" style="margin-top: 10px;">
@@ -2071,10 +2075,6 @@
                         <svg viewBox="0 0 40 40">
                             <rect x="10" y="12" width="20" height="16" fill="none" stroke="#4caf50" stroke-width="2"/>
                             <text x="20" y="24" text-anchor="middle" fill="#4caf50" font-size="8">CAT7</text>
-                        </svg>
-                    </div>
-                            <path d="M12 18 Q20 10 28 18" fill="none" stroke="white" stroke-width="2"/>
-                            <path d="M16 20 Q20 14 24 20" fill="none" stroke="white" stroke-width="1.5"/>
                         </svg>
                     </div>
                 </div>
@@ -7754,6 +7754,33 @@
             };
         }
         
+        // Helper: Get elements belonging to a group (connected by proximity)
+        function getRelatedElements(element) {
+            if (!element) return [];
+            
+            const group = [element];
+            const queue = [element];
+            const visited = new Set([element.id]);
+            
+            while (queue.length > 0) {
+                const current = queue.shift();
+                
+                state.elements.forEach(el => {
+                    if (visited.has(el.id)) return;
+                    
+                    // Check distance (60px threshold for touching/close elements)
+                    const dist = Math.sqrt(Math.pow(el.x - current.x, 2) + Math.pow(el.y - current.y, 2));
+                    if (dist < 60) { 
+                        visited.add(el.id);
+                        group.push(el);
+                        queue.push(el);
+                    }
+                });
+            }
+            
+            return group;
+        }
+        
         function onCanvasMouseDown(e) {
             const coords = getCanvasCoords(e);
             
@@ -7777,6 +7804,15 @@
                     state.selectedElement = clickedElement;
                     state.selectedRoom = null;
                     state.isDragging = true;
+                    
+                    // Initialize drag group
+                    const group = getRelatedElements(clickedElement);
+                    state.dragGroup = group.map(el => ({
+                        element: el,
+                        offsetX: el.x - clickedElement.x,
+                        offsetY: el.y - clickedElement.y
+                    }));
+                    
                     showPropertiesPanel(clickedElement);
                     render();
                     return;
@@ -7865,8 +7901,20 @@
                     newY = Math.round(newY / state.gridSize) * state.gridSize;
                 }
                 
-                state.selectedElement.x = newX;
-                state.selectedElement.y = newY;
+                // Move Group Logic
+                if (state.dragGroup && state.dragGroup.length > 1) {
+                    state.dragGroup.forEach(item => {
+                        item.element.x = newX + item.offsetX;
+                        item.element.y = newY + item.offsetY;
+                    });
+                     // Update selected element position specifically to ensure sync
+                    state.selectedElement.x = newX;
+                    state.selectedElement.y = newY;
+                } else {
+                    state.selectedElement.x = newX;
+                    state.selectedElement.y = newY;
+                }
+                
                 updatePropertiesPanel();
                 render();
             } else if (state.isDraggingRoom && state.selectedRoom && state.roomDragOffset) {
@@ -7975,7 +8023,13 @@
             
             // Snap element back to group after dragging
             if (state.isDragging && state.selectedElement) {
-                snapElementToGroup(state.selectedElement);
+                // Determine if we should snap: only if single element dragged or group is small?
+                // Actually, if we drag a group, we probably just want to place it freely or snap the pivot.
+                // For now, let's keep snap behavior for single elements, or pivot of group
+                if (!state.dragGroup || state.dragGroup.length <= 1) {
+                    snapElementToGroup(state.selectedElement);
+                }
+                state.dragGroup = null;
             }
             
             state.isDragging = false;
@@ -8301,11 +8355,52 @@
         
         function setRotation(degrees) {
             if (!state.selectedElement) return;
-            state.selectedElement.rotation = degrees;
-            document.getElementById('propRotation').value = degrees;
-            updateRotationButtons(degrees);
+            
+            // Group Rotation Logic
+            const group = getRelatedElements(state.selectedElement);
+            
+            if (group.length > 1) {
+                const pivot = state.selectedElement;
+                const currentRot = pivot.rotation || 0;
+                let delta = degrees - currentRot;
+                
+                // Normalize delta
+                while (delta <= -180) delta += 360;
+                while (delta > 180) delta -= 360;
+                
+                if (delta !== 0) {
+                    const rad = delta * Math.PI / 180;
+                    const cos = Math.cos(rad);
+                    const sin = Math.sin(rad);
+                    
+                    group.forEach(el => {
+                        // Update individual rotation
+                        const elRot = el.rotation || 0;
+                        el.rotation = (elRot + delta + 360) % 360;
+                        
+                        // Update position (rotate around pivot)
+                        if (el.id !== pivot.id) {
+                            const dx = el.x - pivot.x;
+                            const dy = el.y - pivot.y;
+                            
+                            el.x = pivot.x + (dx * cos - dy * sin);
+                            el.y = pivot.y + (dx * sin + dy * cos);
+                        }
+                    });
+                }
+                document.getElementById('propRotation').value = pivot.rotation;
+                updateRotationButtons(pivot.rotation);
+                showToast(`Gruppe in Richtung ${pivot.rotation}° gedreht`, 'info');
+                
+            } else {
+                // Single element rotation
+                state.selectedElement.rotation = degrees;
+                document.getElementById('propRotation').value = degrees;
+                updateRotationButtons(degrees);
+                showToast(`Richtung: ${degrees}°`, 'info');
+            }
+            
             render();
-            showToast(`Richtung: ${degrees}°`, 'info');
         }
         
         function duplicateElement() {
