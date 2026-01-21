@@ -3112,6 +3112,11 @@
             isDrawing: false,
             isDrawingLine: false,  // Line tool drawing state
             drawStart: null,
+            // Selection box (Rechteck-Auswahl)
+            isSelectionBox: false,
+            selectionBoxStart: null,
+            selectionBoxCurrent: null,
+            selectedElements: [],  // Multiple selected elements
             lineStart: null,       // Line tool start point
             lineCurrent: null,     // Line tool current point
             elementCounts: {},
@@ -3143,21 +3148,21 @@
         // minHeight = Mindesthöhe die nicht unterschritten werden darf
         const ELEMENT_CONFIG = {
             // Steckdosen
-            steckdose_schuko: { prefix: 'SD', name: 'Schuko-Steckdose', category: 'Steckdosen', price: 89, color: '#000', height: 30, minHeight: 15 },
-            steckdose_usb: { prefix: 'SD', name: 'Schuko mit USB', category: 'Steckdosen', price: 119, color: '#000', height: 30, minHeight: 15 },
-            steckdose_abschl_ap: { prefix: 'SD', name: 'Schuko abschließbar AP', category: 'Steckdosen', price: 139, color: '#000', height: 30, minHeight: 15 },
-            steckdose_orient: { prefix: 'SD', name: 'Schuko mit Orientierungslicht', category: 'Steckdosen', price: 129, color: '#000', height: 30, minHeight: 15 },
-            steckdose_schaltbar: { prefix: 'SD', name: 'Schuko schaltbar', category: 'Steckdosen', price: 109, color: '#000', height: 30, minHeight: 15 },
-            steckdose_kisi_ap: { prefix: 'SD', name: 'Schuko Kindersicherung AP', category: 'Steckdosen', price: 99, color: '#000', height: 30, minHeight: 15 },
-            steckdose_deckel: { prefix: 'SD', name: 'Schuko mit Deckel', category: 'Steckdosen', price: 99, color: '#000', height: 30, minHeight: 15 },
-            steckdose_schaltbar_ap: { prefix: 'SD', name: 'Schuko schaltbar AP', category: 'Steckdosen', price: 119, color: '#000', height: 30, minHeight: 15 },
-            steckdose_deckel_ap: { prefix: 'SD', name: 'Schuko mit Deckel AP', category: 'Steckdosen', price: 109, color: '#000', height: 30, minHeight: 15 },
-            steckdose_kisi: { prefix: 'SD', name: 'Schuko mit Kindersicherung', category: 'Steckdosen', price: 95, color: '#000', height: 30, minHeight: 15 },
-            steckdose_cee16: { prefix: 'CEE', name: 'Steckdose CEE', category: 'Steckdosen', price: 189, color: '#ff5252', height: 100, minHeight: 50 },
-            steckdose_abschl: { prefix: 'SD', name: 'Schuko abschließbar', category: 'Steckdosen', price: 129, color: '#000', height: 30, minHeight: 15 },
-            steckdose_ap: { prefix: 'SD', name: 'Schuko Aufputz', category: 'Steckdosen', price: 95, color: '#000', height: 30, minHeight: 15 },
-            steckdose_boden: { prefix: 'BT', name: 'Bodentank eckig', category: 'Steckdosen', price: 289, color: '#000', height: 0, minHeight: 0 },
-            steckdose_boden_rund: { prefix: 'BT', name: 'Bodentank rund', category: 'Steckdosen', price: 299, color: '#000', height: 0, minHeight: 0 },
+            steckdose_schuko: { prefix: 'SD', name: 'Schuko-Steckdose', category: 'Steckdosen', price: 89, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_usb: { prefix: 'SD', name: 'Schuko mit USB', category: 'Steckdosen', price: 119, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_abschl_ap: { prefix: 'SD', name: 'Schuko abschließbar AP', category: 'Steckdosen', price: 139, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_orient: { prefix: 'SD', name: 'Schuko mit Orientierungslicht', category: 'Steckdosen', price: 129, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_schaltbar: { prefix: 'SD', name: 'Schuko schaltbar', category: 'Steckdosen', price: 109, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_kisi_ap: { prefix: 'SD', name: 'Schuko Kindersicherung AP', category: 'Steckdosen', price: 99, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_deckel: { prefix: 'SD', name: 'Schuko mit Deckel', category: 'Steckdosen', price: 99, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_schaltbar_ap: { prefix: 'SD', name: 'Schuko schaltbar AP', category: 'Steckdosen', price: 119, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_deckel_ap: { prefix: 'SD', name: 'Schuko mit Deckel AP', category: 'Steckdosen', price: 109, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_kisi: { prefix: 'SD', name: 'Schuko mit Kindersicherung', category: 'Steckdosen', price: 95, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_cee16: { prefix: 'CEE', name: 'Steckdose CEE', category: 'Steckdosen', price: 189, color: '#e91e63', height: 100, minHeight: 50 },
+            steckdose_abschl: { prefix: 'SD', name: 'Schuko abschließbar', category: 'Steckdosen', price: 129, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_ap: { prefix: 'SD', name: 'Schuko Aufputz', category: 'Steckdosen', price: 95, color: '#e91e63', height: 30, minHeight: 15 },
+            steckdose_boden: { prefix: 'BT', name: 'Bodentank eckig', category: 'Steckdosen', price: 289, color: '#e91e63', height: 0, minHeight: 0 },
+            steckdose_boden_rund: { prefix: 'BT', name: 'Bodentank rund', category: 'Steckdosen', price: 299, color: '#e91e63', height: 0, minHeight: 0 },
             steckdose_doppelt: { prefix: 'SD', name: 'Doppelsteckdose', category: 'Steckdosen', price: 109, color: '#000', height: 30, minHeight: 15 },
             // Schalter / Taster
             schalter_aus: { prefix: 'AS', name: 'Ausschalter', category: 'Schalter', price: 79, color: '#000', height: 105, minHeight: 85 },
@@ -3724,25 +3729,25 @@
             const config = ELEMENT_CONFIG[firstEl.type];
             const height = firstEl.height !== undefined ? firstEl.height : config?.height;
             
-            // Height indicator (red number with dotted line) - only once for group
+            // Height indicator LEFT side (like JetPlan) - red number with dotted line
             if (height !== undefined && height > 0) {
-                ctx.strokeStyle = '#e74c3c';
+                ctx.strokeStyle = '#e91e63';  // Magenta like JetPlan
                 ctx.lineWidth = 1.5;
-                ctx.setLineDash([4, 3]);
+                ctx.setLineDash([3, 2]);
                 
-                // Dotted line from frame to height number
+                // Dotted line from LEFT side of frame to height number
                 ctx.beginPath();
-                ctx.moveTo(maxX, minY + frameHeight/2);
-                ctx.lineTo(maxX + 40, minY + frameHeight/2);
+                ctx.moveTo(minX, minY + frameHeight/2);
+                ctx.lineTo(minX - 25, minY + frameHeight/2);
                 ctx.stroke();
                 ctx.setLineDash([]);
                 
-                // Height number
-                ctx.font = 'bold 14px Arial';
-                ctx.fillStyle = '#e74c3c';
-                ctx.textAlign = 'left';
+                // Height number (LEFT side)
+                ctx.font = 'bold 12px Arial';
+                ctx.fillStyle = '#e91e63';  // Magenta
+                ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(height.toString(), maxX + 45, minY + frameHeight/2);
+                ctx.fillText(height.toString(), minX - 28, minY + frameHeight/2);
             }
             
             ctx.restore();
@@ -3772,7 +3777,7 @@
         // Inner symbol drawings (without the box)
         const SYMBOL_INNER = {
             steckdose_schuko: (ctx, sel) => {
-                ctx.strokeStyle = '#000';
+                ctx.strokeStyle = '#e91e63';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(0, 0, 12, 0, Math.PI * 2);
@@ -3782,7 +3787,7 @@
                 ctx.stroke();
             },
             steckdose_doppelt: (ctx, sel) => {
-                ctx.strokeStyle = '#000';
+                ctx.strokeStyle = '#e91e63';
                 ctx.lineWidth = 2;
                 [-7, 7].forEach(ox => {
                     ctx.beginPath();
@@ -3794,7 +3799,7 @@
                 });
             },
             schalter: (ctx, sel) => {
-                ctx.strokeStyle = '#000';
+                ctx.strokeStyle = '#e91e63';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(-8, 0, 5, 0, Math.PI * 2);
@@ -3805,7 +3810,7 @@
                 ctx.stroke();
             },
             schalter_wechsel: (ctx, sel) => {
-                ctx.strokeStyle = '#000';
+                ctx.strokeStyle = '#e91e63';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(-8, 0, 5, 0, Math.PI * 2);
@@ -3818,7 +3823,7 @@
                 ctx.stroke();
             },
             licht_decke: (ctx, sel) => {
-                ctx.strokeStyle = '#000';
+                ctx.strokeStyle = '#e91e63';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.moveTo(-10, -10);
@@ -3828,7 +3833,7 @@
                 ctx.stroke();
             },
             licht_wand: (ctx, sel) => {
-                ctx.strokeStyle = '#000';
+                ctx.strokeStyle = '#e91e63';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(0, 0, 10, 0, Math.PI * 2);
@@ -3839,7 +3844,7 @@
                 ctx.stroke();
             },
             default: (ctx, sel) => {
-                ctx.strokeStyle = '#000';
+                ctx.strokeStyle = '#e91e63';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(0, 0, 10, 0, Math.PI * 2);
@@ -7680,6 +7685,50 @@
                 ctx.setLineDash([]);
             }
             
+            // Draw SELECTION BOX (like JetPlan)
+            if (state.isSelectionBox && state.selectionBoxStart && state.selectionBoxCurrent) {
+                const minX = Math.min(state.selectionBoxStart.x, state.selectionBoxCurrent.x);
+                const minY = Math.min(state.selectionBoxStart.y, state.selectionBoxCurrent.y);
+                const boxWidth = Math.abs(state.selectionBoxCurrent.x - state.selectionBoxStart.x);
+                const boxHeight = Math.abs(state.selectionBoxCurrent.y - state.selectionBoxStart.y);
+                
+                ctx.save();
+                // Semi-transparent fill (light blue)
+                ctx.fillStyle = 'rgba(0, 153, 255, 0.15)';
+                ctx.fillRect(minX, minY, boxWidth, boxHeight);
+                
+                // Blue dashed border
+                ctx.strokeStyle = '#0099ff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 4]);
+                ctx.strokeRect(minX, minY, boxWidth, boxHeight);
+                ctx.setLineDash([]);
+                
+                // Draw handles at corners and midpoints
+                const handlePositions = [
+                    { x: minX, y: minY },                          // Top-left
+                    { x: minX + boxWidth/2, y: minY },             // Top-mid
+                    { x: minX + boxWidth, y: minY },               // Top-right
+                    { x: minX + boxWidth, y: minY + boxHeight/2 }, // Right-mid
+                    { x: minX + boxWidth, y: minY + boxHeight },   // Bottom-right
+                    { x: minX + boxWidth/2, y: minY + boxHeight }, // Bottom-mid
+                    { x: minX, y: minY + boxHeight },              // Bottom-left
+                    { x: minX, y: minY + boxHeight/2 }             // Left-mid
+                ];
+                
+                handlePositions.forEach(pos => {
+                    ctx.fillStyle = 'white';
+                    ctx.strokeStyle = '#0099ff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                });
+                
+                ctx.restore();
+            }
+            
             // Draw connection lines
             state.lines.forEach(line => {
                 drawConnectionLine(line, state.selectedLine?.id === line.id);
@@ -7937,14 +7986,18 @@
                     return;
                 }
                 
-                // Nothing clicked - start panning
+                // Nothing clicked - start SELECTION BOX (not panning)
                 state.selectedElement = null;
                 state.selectedRoom = null;
+                state.selectedElements = [];
                 hidePropertiesPanel();
                 hideRoomPropertiesPanel();
-                state.isPanning = true;
-                state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
-                canvas.style.cursor = 'grabbing';
+                
+                // Start selection box
+                state.isSelectionBox = true;
+                state.selectionBoxStart = coords;
+                state.selectionBoxCurrent = coords;
+                canvas.style.cursor = 'crosshair';
                 render();
             } else if (state.currentTool === 'pan') {
                 state.isPanning = true;
@@ -8038,6 +8091,10 @@
             } else if (state.isDrawingLine && state.lineStart) {
                 state.lineCurrent = { x: coords.x, y: coords.y };
                 render();
+            } else if (state.isSelectionBox && state.selectionBoxStart) {
+                // Update selection box
+                state.selectionBoxCurrent = coords;
+                render();
             }
         }
         
@@ -8129,6 +8186,30 @@
                     snapElementToGroup(state.selectedElement);
                 }
                 state.dragGroup = null;
+            }
+            
+            // Finish selection box
+            if (state.isSelectionBox && state.selectionBoxStart && state.selectionBoxCurrent) {
+                const minX = Math.min(state.selectionBoxStart.x, state.selectionBoxCurrent.x);
+                const maxX = Math.max(state.selectionBoxStart.x, state.selectionBoxCurrent.x);
+                const minY = Math.min(state.selectionBoxStart.y, state.selectionBoxCurrent.y);
+                const maxY = Math.max(state.selectionBoxStart.y, state.selectionBoxCurrent.y);
+                
+                // Find all elements inside the selection box
+                state.selectedElements = state.elements.filter(el => 
+                    el.x >= minX && el.x <= maxX && el.y >= minY && el.y <= maxY
+                );
+                
+                // If elements selected, pick first as main selected
+                if (state.selectedElements.length > 0) {
+                    state.selectedElement = state.selectedElements[0];
+                    showPropertiesPanel(state.selectedElement);
+                    showToast(`${state.selectedElements.length} Element(e) ausgewählt`, 'success');
+                }
+                
+                state.isSelectionBox = false;
+                state.selectionBoxStart = null;
+                state.selectionBoxCurrent = null;
             }
             
             state.isDragging = false;
