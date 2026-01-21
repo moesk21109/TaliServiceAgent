@@ -3717,8 +3717,8 @@
             
             ctx.save();
             
-            // Big white frame (like JetPlan)
-            ctx.fillStyle = 'white';
+            // Big white frame (like JetPlan) - 70% transparent to see objects behind
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
             ctx.strokeStyle = isAnySelected ? '#0099ff' : '#333';
             ctx.lineWidth = isAnySelected ? 2.5 : 2;
             
