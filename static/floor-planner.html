@@ -3699,8 +3699,8 @@
         function drawCombinationFrame(ctx, group, isAnySelected) {
             if (group.length < 1) return;
             
-            // Sort by Y position (top to bottom) for vertical arrangement
-            const sorted = [...group].sort((a, b) => a.y - b.y);
+            // Sort by X position (left to right) for HORIZONTAL arrangement (JetPlan style)
+            const sorted = [...group].sort((a, b) => a.x - b.x);
             
             // Calculate bounding box - BIG white frame like JetPlan
             const padding = 12;
@@ -7452,23 +7452,34 @@
                 }
             });
             
-            // Only snap if close enough (otherwise create new group position)
+            // Only snap if close enough AND same height (otherwise create new group position)
+            const newElHeight = Math.max(config.height || 30, config.minHeight || 0);
+            
             if (closestEl && closestDist < groupSnapDistance) {
-                // Find the bottom-most element in this column/group
-                const groupElements = state.elements.filter(el => {
-                    return Math.abs(el.x - closestEl.x) < 30;
-                });
+                // Get height of closest element
+                const closestConfig = ELEMENT_CONFIG[closestEl.type];
+                const closestHeight = closestEl.height !== undefined ? closestEl.height : (closestConfig?.height || 30);
                 
-                const bottomEl = groupElements.reduce((bottom, el) => {
-                    return el.y > bottom.y ? el : bottom;
-                }, closestEl);
-                
-                // Place directly below, same X position (vertical stacking)
-                snapX = closestEl.x;
-                snapY = bottomEl.y + SYMBOL_SIZE + 8;
-                snapped = true;
+                // Only snap to group if SAME HEIGHT
+                if (closestHeight === newElHeight) {
+                    // Find the right-most element in this row/group (HORIZONTAL)
+                    const groupElements = state.elements.filter(el => {
+                        const elConfig = ELEMENT_CONFIG[el.type];
+                        const elHeight = el.height !== undefined ? el.height : (elConfig?.height || 30);
+                        return Math.abs(el.y - closestEl.y) < 30 && elHeight === newElHeight;
+                    });
+                    
+                    const rightEl = groupElements.reduce((right, el) => {
+                        return el.x > right.x ? el : right;
+                    }, closestEl);
+                    
+                    // Place directly RIGHT, same Y position (HORIZONTAL stacking - JetPlan style)
+                    snapX = rightEl.x + SYMBOL_SIZE + 8;
+                    snapY = closestEl.y;
+                    snapped = true;
+                }
             }
-            // If distance > newGroupDistance, element stays at drop position (new group)
+            // If distance > newGroupDistance or different height, element stays at drop position (new group)
             
             // Generate unique ID
             const prefix = config.prefix;
