@@ -7367,6 +7367,48 @@
         }
         
         // =============================================
+        // AUTO-WALL-ALIGNMENT (like JetPlan)
+        // =============================================
+        function calculateWallAlignment(x, y) {
+            // Find nearest room edge and return rotation to face that wall
+            // 0° = facing up (arrow points up), 90° = facing right, 180° = facing down, 270° = facing left
+            
+            let nearestWall = null;
+            let minDistance = Infinity;
+            
+            state.rooms.forEach(room => {
+                // Calculate distances to each wall
+                const walls = [
+                    { side: 'top', dist: Math.abs(y - room.y), rotation: 0 },                    // Top wall → face up
+                    { side: 'bottom', dist: Math.abs(y - (room.y + room.height)), rotation: 180 }, // Bottom wall → face down
+                    { side: 'left', dist: Math.abs(x - room.x), rotation: 270 },                 // Left wall → face left
+                    { side: 'right', dist: Math.abs(x - (room.x + room.width)), rotation: 90 }   // Right wall → face right
+                ];
+                
+                // Only consider walls if element is inside or near the room
+                const isInsideX = x >= room.x - 50 && x <= room.x + room.width + 50;
+                const isInsideY = y >= room.y - 50 && y <= room.y + room.height + 50;
+                
+                if (isInsideX && isInsideY) {
+                    walls.forEach(wall => {
+                        if (wall.dist < minDistance) {
+                            minDistance = wall.dist;
+                            nearestWall = wall;
+                        }
+                    });
+                }
+            });
+            
+            // If found a nearby wall, rotate to face it
+            if (nearestWall && minDistance < 150) {
+                return nearestWall.rotation;
+            }
+            
+            // Default: face up (0°)
+            return 0;
+        }
+        
+        // =============================================
         // ELEMENT MANAGEMENT
         // =============================================
         function addElement(type, x, y, room = 'Unzugeordnet') {
@@ -7433,7 +7475,7 @@
                 code: code,
                 x: snapX,
                 y: snapY,
-                rotation: 0,  // 0, 90, 180, 270 degrees
+                rotation: 0,  // Will be set by auto-wall-alignment
                 height: elementHeight,  // Mounting height in cm (respects minHeight)
                 room: room,
                 floor: document.getElementById('floorSelect')?.value || 'EG',
@@ -7441,6 +7483,9 @@
                 price: config.price,
                 color: config.color
             };
+            
+            // AUTO-WALL-ALIGNMENT: Rotate element to face nearest wall/room edge
+            element.rotation = calculateWallAlignment(element.x, element.y);
             
             state.elements.push(element);
             updateElementCount();
