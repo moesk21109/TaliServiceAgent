@@ -7697,6 +7697,8 @@
                 
                 // Draw inner symbols for each element in the group
                 group.forEach(el => {
+                    const isSelected = state.selectedElement?.id === el.id;
+                    
                     // Draw the inner symbol only (frame is provided by combination frame)
                     ctx.save();
                     ctx.translate(el.x, el.y);
