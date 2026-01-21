@@ -3651,19 +3651,32 @@
         }
         
         function findElementGroups(elements, maxDistance = 40) {
-            // Find groups of elements that are close together (combinations)
+            // Find groups of elements that are close together AND have the SAME HEIGHT
+            // JetPlan style: Different heights = separate frames!
             const groups = [];
             const used = new Set();
+            
+            // Helper to get element height
+            const getHeight = (el) => {
+                const config = ELEMENT_CONFIG[el.type];
+                return el.height !== undefined ? el.height : (config?.height || 30);
+            };
             
             elements.forEach(el => {
                 if (used.has(el.id)) return;
                 
+                const elHeight = getHeight(el);
                 const group = [el];
                 used.add(el.id);
                 
-                // Find all elements close to this one
+                // Find all elements close to this one WITH SAME HEIGHT
                 elements.forEach(other => {
                     if (used.has(other.id)) return;
+                    
+                    const otherHeight = getHeight(other);
+                    
+                    // Only group if SAME HEIGHT!
+                    if (otherHeight !== elHeight) return;
                     
                     // Check if any element in group is close to this one
                     const isClose = group.some(g => {
