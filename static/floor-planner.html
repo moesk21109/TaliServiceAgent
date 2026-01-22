@@ -2979,6 +2979,48 @@
         </div>
     </div>
     
+    <!-- Frame Group Context Menu (JetPlan style) -->
+    <div class="context-menu" id="frameContextMenu">
+        <div class="context-menu-item" style="font-weight:bold; color:#e91e63; pointer-events:none;">
+            <i class="bi bi-rulers"></i> Installationshöhe
+        </div>
+        <div class="context-menu-item" onclick="setGroupHeight(15)">
+            <i class="bi bi-dash"></i> 15 cm (Bodennah)
+        </div>
+        <div class="context-menu-item" onclick="setGroupHeight(30)">
+            <i class="bi bi-dash"></i> 30 cm (Steckdosen)
+        </div>
+        <div class="context-menu-item" onclick="setGroupHeight(85)">
+            <i class="bi bi-dash"></i> 85 cm (Küche)
+        </div>
+        <div class="context-menu-item" onclick="setGroupHeight(105)">
+            <i class="bi bi-dash"></i> 105 cm (Schalter)
+        </div>
+        <div class="context-menu-item" onclick="setGroupHeight(150)">
+            <i class="bi bi-dash"></i> 150 cm (Hoch)
+        </div>
+        <div class="context-menu-item" onclick="setGroupHeight(200)">
+            <i class="bi bi-dash"></i> 200 cm (Decke)
+        </div>
+        <hr style="margin:5px 0; border-color:#444;">
+        <div class="context-menu-item" style="font-weight:bold; color:#0099ff; pointer-events:none;">
+            <i class="bi bi-arrows"></i> Ausrichtung
+        </div>
+        <div class="context-menu-item" onclick="setGroupOrientation('horizontal')">
+            <i class="bi bi-arrow-left-right"></i> Horizontal
+        </div>
+        <div class="context-menu-item" onclick="setGroupOrientation('vertical')">
+            <i class="bi bi-arrow-down-up"></i> Vertikal
+        </div>
+        <hr style="margin:5px 0; border-color:#444;">
+        <div class="context-menu-item" onclick="selectAllInGroup()">
+            <i class="bi bi-check-all"></i> Alle auswählen
+        </div>
+        <div class="context-menu-item" onclick="deleteGroup()" style="color: #ff5252;">
+            <i class="bi bi-trash"></i> Gruppe löschen
+        </div>
+    </div>
+    
     <!-- Upload Modal -->
     <div class="modal fade" id="uploadModal" tabindex="-1">
         <div class="modal-dialog">
@@ -3123,6 +3165,10 @@
             lineStart: null,       // Line tool start point
             lineCurrent: null,     // Line tool current point
             elementCounts: {},
+            // Drop zone tracking (JetPlan style)
+            dropZoneTarget: null,   // Target element/group for drop zone
+            dragOverCoords: null,   // Current drag position
+            isDraggingFromSidebar: false, // Is dragging from sidebar
             // Project tracking
             currentProjectId: null,
             currentFloorId: null,
@@ -3653,6 +3699,9 @@
             ctx.restore();
         }
         
+        // Store clickable height label areas for context menu (JetPlan style)
+        let frameHeightLabels = [];
+        
         function findElementGroups(elements, maxDistance = 40) {
             // Find groups of elements that are close together AND have the SAME HEIGHT
             // JetPlan style: Different heights = separate frames!
@@ -3758,13 +3807,88 @@
                 ctx.stroke();
                 ctx.setLineDash([]);
                 
-                // Height number (LEFT side)
+                // Height number (LEFT side) - CLICKABLE for context menu
+                const labelX = minX - 28;
+                const labelY = minY + frameHeight/2;
                 ctx.font = 'bold 12px Arial';
                 ctx.fillStyle = '#e91e63';  // Magenta
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(height.toString(), minX - 28, minY + frameHeight/2);
+                ctx.fillText(height.toString(), labelX, labelY);
+                
+                // Store clickable area (in canvas coordinates)
+                frameHeightLabels.push({
+                    x: labelX - 25,
+                    y: labelY - 12,
+                    width: 30,
+                    height: 24,
+                    group: group
+                });
             }
+            
+            ctx.restore();
+        }
+        
+        // Draw blue striped drop zone (JetPlan style)
+        function drawDropZone(ctx, targetElement) {
+            if (!targetElement) return;
+            
+            // Find the group this element belongs to
+            const targetHeight = targetElement.height !== undefined ? targetElement.height : 
+                (ELEMENT_CONFIG[targetElement.type]?.height || 30);
+            
+            // Find all elements in the same group (same height, close proximity)
+            const groupElements = state.elements.filter(el => {
+                const elHeight = el.height !== undefined ? el.height : (ELEMENT_CONFIG[el.type]?.height || 30);
+                const dist = Math.sqrt(Math.pow(el.x - targetElement.x, 2) + Math.pow(el.y - targetElement.y, 2));
+                return elHeight === targetHeight && dist < 80;
+            });
+            
+            // Calculate group bounding box
+            const padding = 20;
+            const minX = Math.min(...groupElements.map(e => e.x)) - SYMBOL_SIZE/2 - padding;
+            const maxX = Math.max(...groupElements.map(e => e.x)) + SYMBOL_SIZE/2 + padding + SYMBOL_SIZE + 20; // Extra space for new element
+            const minY = Math.min(...groupElements.map(e => e.y)) - SYMBOL_SIZE/2 - padding;
+            const maxY = Math.max(...groupElements.map(e => e.y)) + SYMBOL_SIZE/2 + padding;
+            
+            const width = maxX - minX;
+            const height = maxY - minY;
+            
+            ctx.save();
+            
+            // Blue striped fill (like JetPlan)
+            ctx.fillStyle = 'rgba(0, 153, 255, 0.2)';
+            ctx.fillRect(minX, minY, width, height);
+            
+            // Create diagonal stripe pattern
+            ctx.strokeStyle = 'rgba(0, 153, 255, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            // Draw diagonal stripes
+            const stripeGap = 12;
+            for (let i = -height; i < width + height; i += stripeGap) {
+                ctx.moveTo(minX + i, minY);
+                ctx.lineTo(minX + i - height, maxY);
+            }
+            ctx.stroke();
+            
+            // Blue border
+            ctx.strokeStyle = '#0099ff';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            ctx.strokeRect(minX, minY, width, height);
+            
+            // "+" indicator where new element will be placed
+            const rightEl = groupElements.reduce((right, el) => el.x > right.x ? el : right, groupElements[0]);
+            const plusX = rightEl.x + SYMBOL_SIZE + 15;
+            const plusY = rightEl.y;
+            
+            ctx.fillStyle = '#0099ff';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('+', plusX, plusY);
             
             ctx.restore();
         }
@@ -7452,10 +7576,15 @@
                     e.dataTransfer.setData('element-type', item.dataset.type);
                     e.dataTransfer.setData('element-name', item.dataset.name);
                     item.classList.add('dragging');
+                    state.isDraggingFromSidebar = true;
                 });
                 
                 item.addEventListener('dragend', () => {
                     item.classList.remove('dragging');
+                    state.isDraggingFromSidebar = false;
+                    state.dropZoneTarget = null;
+                    state.dragOverCoords = null;
+                    render();
                 });
             });
             
@@ -7464,10 +7593,45 @@
             
             canvasContainer.addEventListener('dragover', (e) => {
                 e.preventDefault();
+                
+                // Track drag position for blue drop zone (JetPlan style)
+                if (state.isDraggingFromSidebar) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left - state.panX) / state.zoom;
+                    const y = (e.clientY - rect.top - state.panY) / state.zoom;
+                    
+                    state.dragOverCoords = { x, y };
+                    
+                    // Find nearby element group to show drop zone
+                    const dropDistance = 80;
+                    let foundTarget = null;
+                    
+                    state.elements.forEach(el => {
+                        const dist = Math.sqrt(Math.pow(el.x - x, 2) + Math.pow(el.y - y, 2));
+                        if (dist < dropDistance) {
+                            foundTarget = el;
+                        }
+                    });
+                    
+                    state.dropZoneTarget = foundTarget;
+                    render();
+                }
+            });
+            
+            canvasContainer.addEventListener('dragleave', (e) => {
+                if (state.isDraggingFromSidebar) {
+                    state.dropZoneTarget = null;
+                    state.dragOverCoords = null;
+                    render();
+                }
             });
             
             canvasContainer.addEventListener('drop', (e) => {
                 e.preventDefault();
+                state.dropZoneTarget = null;
+                state.dragOverCoords = null;
+                state.isDraggingFromSidebar = false;
+                
                 if (!state.floorPlanImage) {
                     showToast('Bitte zuerst einen Grundriss hochladen!', 'warning');
                     return;
@@ -7567,7 +7731,7 @@
                 const closestConfig = ELEMENT_CONFIG[closestEl.type];
                 const closestHeight = closestEl.height !== undefined ? closestEl.height : (closestConfig?.height || 30);
                 
-                // Only snap to group if SAME HEIGHT
+                // SAME HEIGHT → snap to same row (HORIZONTAL)
                 if (closestHeight === newElHeight) {
                     // Find the right-most element in this row/group (HORIZONTAL)
                     const groupElements = state.elements.filter(el => {
@@ -7583,6 +7747,53 @@
                     // Place directly RIGHT, same Y position (HORIZONTAL stacking - JetPlan style)
                     snapX = rightEl.x + SYMBOL_SIZE + 8;
                     snapY = closestEl.y;
+                    snapped = true;
+                } else {
+                    // DIFFERENT HEIGHT → create new row above/below (JetPlan: higher height = closer to wall = closer to arrow)
+                    // Find all height groups at this "Montageort" (installation point)
+                    const montageortElements = state.elements.filter(el => {
+                        const dist = Math.sqrt(Math.pow(el.x - closestEl.x, 2) + Math.pow(el.y - closestEl.y, 2));
+                        return dist < 120; // Elements within 120px are part of same Montageort
+                    });
+                    
+                    // Get unique heights and their Y positions
+                    const heightRows = {};
+                    montageortElements.forEach(el => {
+                        const h = el.height !== undefined ? el.height : (ELEMENT_CONFIG[el.type]?.height || 30);
+                        if (!heightRows[h]) {
+                            heightRows[h] = { height: h, y: el.y, elements: [] };
+                        }
+                        heightRows[h].elements.push(el);
+                    });
+                    
+                    // Find where new height should be positioned
+                    // JetPlan: Higher height = closer to wall (arrow direction)
+                    // Arrow points UP (top of canvas), so higher heights should have SMALLER Y values
+                    const sortedHeights = Object.values(heightRows).sort((a, b) => b.height - a.height);
+                    
+                    let targetY;
+                    const rowSpacing = SYMBOL_SIZE + 20;
+                    
+                    if (newElHeight > sortedHeights[0]?.height) {
+                        // New element is highest - place above (closer to wall)
+                        targetY = sortedHeights[0].y - rowSpacing;
+                    } else {
+                        // Find position in sorted order
+                        let insertIndex = sortedHeights.findIndex(row => newElHeight > row.height);
+                        if (insertIndex === -1) {
+                            // New element is lowest - place below
+                            const lowestRow = sortedHeights[sortedHeights.length - 1];
+                            targetY = lowestRow.y + rowSpacing;
+                        } else {
+                            // Insert between rows
+                            targetY = sortedHeights[insertIndex].y - rowSpacing;
+                        }
+                    }
+                    
+                    // X position: align with center of Montageort
+                    const centerX = montageortElements.reduce((sum, el) => sum + el.x, 0) / montageortElements.length;
+                    snapX = centerX;
+                    snapY = targetY;
                     snapped = true;
                 }
             }
@@ -7747,6 +7958,9 @@
         function render() {
             if (!ctx) return;
             
+            // Clear frame height labels for click detection
+            frameHeightLabels = [];
+            
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
             
@@ -7848,6 +8062,11 @@
                     drawGroupSelectionWithHandles(ctx, group);
                 }
             });
+            
+            // Draw BLUE DROP ZONE when dragging from sidebar (JetPlan style)
+            if (state.isDraggingFromSidebar && state.dropZoneTarget) {
+                drawDropZone(ctx, state.dropZoneTarget);
+            }
             
             // Draw room being created
             if (state.isDrawing && state.drawStart && state.currentTool === 'room') {
@@ -8080,7 +8299,7 @@
             };
         }
         
-        // Helper: Get elements belonging to a group (connected by proximity)
+        // Helper: Get elements belonging to a Montageort (installation point) - all connected elements
         function getRelatedElements(element) {
             if (!element) return [];
             
@@ -8094,9 +8313,10 @@
                 state.elements.forEach(el => {
                     if (visited.has(el.id)) return;
                     
-                    // Check distance (60px threshold for touching/close elements)
+                    // Check distance (120px threshold to capture all rows of a Montageort)
+                    // JetPlan: Elements at same installation point but different heights are still connected
                     const dist = Math.sqrt(Math.pow(el.x - current.x, 2) + Math.pow(el.y - current.y, 2));
-                    if (dist < 60) { 
+                    if (dist < 120) { 
                         visited.add(el.id);
                         group.push(el);
                         queue.push(el);
@@ -8117,6 +8337,18 @@
                 state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
                 canvas.style.cursor = 'grabbing';
                 return;
+            }
+            
+            // Check if clicking on a height label (JetPlan style context menu)
+            if (e.button === 0 && state.currentTool === 'select') {
+                for (const label of frameHeightLabels) {
+                    if (coords.x >= label.x && coords.x <= label.x + label.width &&
+                        coords.y >= label.y && coords.y <= label.y + label.height) {
+                        // Clicked on height label - show frame context menu
+                        showFrameContextMenu(e.clientX, e.clientY, label.group);
+                        return;
+                    }
+                }
             }
             
             // Track mouse down time for long-press pan
@@ -9645,6 +9877,142 @@
                 render();
                 showToast('Element aus Gruppe gelöst', 'success');
             }
+        }
+        
+        // =============================================
+        // FRAME GROUP MANAGEMENT (JetPlan style)
+        // =============================================
+        
+        // Store the currently selected group for context menu actions
+        let selectedFrameGroup = null;
+        
+        function findGroupContainingElement(element) {
+            if (!element) return null;
+            
+            const elHeight = element.height !== undefined ? element.height : 
+                (ELEMENT_CONFIG[element.type]?.height || 30);
+            
+            return state.elements.filter(el => {
+                const h = el.height !== undefined ? el.height : (ELEMENT_CONFIG[el.type]?.height || 30);
+                const dist = Math.sqrt(Math.pow(el.x - element.x, 2) + Math.pow(el.y - element.y, 2));
+                return h === elHeight && dist < 80;
+            });
+        }
+        
+        function setGroupHeight(newHeight) {
+            const group = selectedFrameGroup || (state.selectedElement ? findGroupContainingElement(state.selectedElement) : null);
+            
+            if (group && group.length > 0) {
+                saveHistory();
+                
+                // Check if new height is below minimum for any element
+                let blocked = false;
+                group.forEach(el => {
+                    const config = ELEMENT_CONFIG[el.type];
+                    if (config && config.minHeight && newHeight < config.minHeight) {
+                        blocked = true;
+                        showToast(`${config.name} benötigt mindestens ${config.minHeight} cm`, 'warning');
+                    }
+                });
+                
+                if (blocked) {
+                    hideFrameContextMenu();
+                    return;
+                }
+                
+                group.forEach(el => {
+                    el.height = newHeight;
+                });
+                
+                hideFrameContextMenu();
+                render();
+                showToast(`Installationshöhe auf ${newHeight} cm geändert`, 'success');
+            }
+        }
+        
+        function setGroupOrientation(orientation) {
+            const group = selectedFrameGroup || (state.selectedElement ? findGroupContainingElement(state.selectedElement) : null);
+            
+            if (group && group.length > 1) {
+                saveHistory();
+                
+                // Get center point of group
+                const centerX = group.reduce((sum, el) => sum + el.x, 0) / group.length;
+                const centerY = group.reduce((sum, el) => sum + el.y, 0) / group.length;
+                
+                // Sort elements by current position
+                const sorted = [...group].sort((a, b) => {
+                    const isHorizontal = Math.abs(a.x - b.x) > Math.abs(a.y - b.y);
+                    return isHorizontal ? a.x - b.x : a.y - b.y;
+                });
+                
+                // Reposition based on new orientation
+                const spacing = SYMBOL_SIZE + 8;
+                const startOffset = -((group.length - 1) * spacing) / 2;
+                
+                sorted.forEach((el, index) => {
+                    if (orientation === 'horizontal') {
+                        el.x = centerX + startOffset + (index * spacing);
+                        el.y = centerY;
+                    } else {
+                        el.x = centerX;
+                        el.y = centerY + startOffset + (index * spacing);
+                    }
+                });
+                
+                hideFrameContextMenu();
+                render();
+                showToast(`Ausrichtung auf ${orientation === 'horizontal' ? 'horizontal' : 'vertikal'} geändert`, 'success');
+            }
+        }
+        
+        function selectAllInGroup() {
+            const group = selectedFrameGroup || (state.selectedElement ? findGroupContainingElement(state.selectedElement) : null);
+            
+            if (group && group.length > 0) {
+                state.selectedElements = group;
+                state.selectedElement = group[0];
+                hideFrameContextMenu();
+                render();
+                showToast(`${group.length} Elemente ausgewählt`, 'success');
+            }
+        }
+        
+        function deleteGroup() {
+            const group = selectedFrameGroup || (state.selectedElement ? findGroupContainingElement(state.selectedElement) : null);
+            
+            if (group && group.length > 0) {
+                if (confirm(`Wirklich ${group.length} Elemente löschen?`)) {
+                    saveHistory();
+                    
+                    const ids = new Set(group.map(el => el.id));
+                    state.elements = state.elements.filter(el => !ids.has(el.id));
+                    state.selectedElement = null;
+                    state.selectedElements = [];
+                    
+                    hideFrameContextMenu();
+                    updateElementCount();
+                    render();
+                    showToast(`${group.length} Elemente gelöscht`, 'success');
+                }
+            }
+        }
+        
+        function showFrameContextMenu(x, y, group) {
+            selectedFrameGroup = group;
+            const menu = document.getElementById('frameContextMenu');
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.classList.add('show');
+            
+            setTimeout(() => {
+                document.addEventListener('click', hideFrameContextMenu, { once: true });
+            }, 0);
+        }
+        
+        function hideFrameContextMenu() {
+            document.getElementById('frameContextMenu').classList.remove('show');
+            selectedFrameGroup = null;
         }
         
         // =============================================
