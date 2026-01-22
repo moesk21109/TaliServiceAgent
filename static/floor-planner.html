@@ -3717,8 +3717,8 @@
             
             ctx.save();
             
-            // Big white frame (like JetPlan) - 70% transparent to see objects behind
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            // Big white frame (like JetPlan) - 20% transparent to see objects behind
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.strokeStyle = isAnySelected ? '#0099ff' : '#333';
             ctx.lineWidth = isAnySelected ? 2.5 : 2;
             
@@ -7324,7 +7324,7 @@
                         }));
                         
                         state.currentFloor = data.currentFloor || 'EG';
-                        loadCurrentFloorData();
+                        loadFloorData(state.currentFloor);
                         renderFloorTabs();
                         updateElementList();
                         updateRoomList();
@@ -7534,7 +7534,7 @@
             
             saveHistory();
             
-            // Smart snap: ALWAYS snap BELOW existing elements (vertical stacking like JetPlan)
+            // Smart snap: Place HORIZONTALLY next to existing elements with same height (JetPlan style)
             const snapDistance = 60;
             let snapX = x;
             let snapY = y;
