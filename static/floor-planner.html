@@ -7234,10 +7234,114 @@
             // Check if project ID in URL
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('project');
+            const customerId = urlParams.get('customer');
+            
             if (projectId) {
                 loadProject(projectId);
+            } else {
+                // Try to restore from localStorage
+                restoreFromLocalStorage();
             }
+            
+            // Pre-select customer if passed via URL (from dashboard)
+            if (customerId) {
+                state.selectedCustomerId = parseInt(customerId);
+                const select = document.getElementById('customerSelect');
+                if (select) select.value = customerId;
+            }
+            
+            // Auto-save to localStorage every 30 seconds
+            setInterval(autoSaveToLocalStorage, 30000);
+            
+            // Save before leaving page
+            window.addEventListener('beforeunload', autoSaveToLocalStorage);
         });
+        
+        // =============================================
+        // LOCAL STORAGE BACKUP (prevents data loss)
+        // =============================================
+        function autoSaveToLocalStorage() {
+            try {
+                saveCurrentFloorData();
+                const data = {
+                    projectName: document.getElementById('projectName').textContent,
+                    projectId: state.currentProjectId,
+                    customerId: state.selectedCustomerId,
+                    floors: state.floors.map(f => ({
+                        id: f.id,
+                        name: f.name,
+                        elements: f.elements || [],
+                        rooms: f.rooms || [],
+                        texts: f.texts || [],
+                        lines: f.lines || []
+                    })),
+                    currentFloor: state.currentFloor,
+                    pixelsPerMeter: state.pixelsPerMeter,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem('floorPlannerAutoSave', JSON.stringify(data));
+                console.log('[AutoSave] Saved to localStorage');
+            } catch (e) {
+                console.error('[AutoSave] Error:', e);
+            }
+        }
+        
+        function restoreFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('floorPlannerAutoSave');
+                if (!saved) return;
+                
+                const data = JSON.parse(saved);
+                
+                // Only restore if saved within last 24 hours
+                const savedTime = new Date(data.timestamp);
+                const now = new Date();
+                const hoursDiff = (now - savedTime) / (1000 * 60 * 60);
+                
+                if (hoursDiff > 24) {
+                    console.log('[Restore] AutoSave too old, ignoring');
+                    return;
+                }
+                
+                // Ask user if they want to restore
+                if (data.floors && data.floors.length > 0) {
+                    const restore = confirm(`Letztes Projekt wiederherstellen?\n"${data.projectName}"\nGespeichert: ${savedTime.toLocaleString()}`);
+                    
+                    if (restore) {
+                        document.getElementById('projectName').textContent = data.projectName;
+                        state.currentProjectId = data.projectId;
+                        state.selectedCustomerId = data.customerId;
+                        state.pixelsPerMeter = data.pixelsPerMeter || 100;
+                        
+                        state.floors = data.floors.map(f => ({
+                            id: f.id,
+                            name: f.name,
+                            image: null,
+                            elements: f.elements || [],
+                            rooms: f.rooms || [],
+                            texts: f.texts || [],
+                            lines: f.lines || []
+                        }));
+                        
+                        state.currentFloor = data.currentFloor || 'EG';
+                        loadCurrentFloorData();
+                        renderFloorTabs();
+                        updateElementList();
+                        updateRoomList();
+                        render();
+                        
+                        showToast('Projekt wiederhergestellt!', 'success');
+                    }
+                }
+            } catch (e) {
+                console.error('[Restore] Error:', e);
+            }
+        }
+        
+        function clearLocalStorage() {
+            localStorage.removeItem('floorPlannerAutoSave');
+            showToast('Lokaler Speicher gelöscht', 'info');
+        }
         
         // =============================================
         // CUSTOMERS
