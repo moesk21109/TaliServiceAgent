@@ -3169,6 +3169,8 @@
             dropZoneTarget: null,   // Target element/group for drop zone
             dragOverCoords: null,   // Current drag position
             isDraggingFromSidebar: false, // Is dragging from sidebar
+            dropZoneHoverTime: null,  // Track hover time for edit mode
+            dropZoneEditMode: false,  // Long hover activates edit mode
             // Project tracking
             currentProjectId: null,
             currentFloorId: null,
@@ -3829,7 +3831,7 @@
             ctx.restore();
         }
         
-        // Draw blue striped drop zone (JetPlan style)
+        // Draw RED striped drop zone (JetPlan style - red frame indicator)
         function drawDropZone(ctx, targetElement) {
             if (!targetElement) return;
             
@@ -3856,12 +3858,12 @@
             
             ctx.save();
             
-            // Blue striped fill (like JetPlan)
-            ctx.fillStyle = 'rgba(0, 153, 255, 0.2)';
+            // RED striped fill (like JetPlan)
+            ctx.fillStyle = 'rgba(233, 30, 99, 0.15)';
             ctx.fillRect(minX, minY, width, height);
             
-            // Create diagonal stripe pattern
-            ctx.strokeStyle = 'rgba(0, 153, 255, 0.5)';
+            // Create diagonal stripe pattern - RED
+            ctx.strokeStyle = 'rgba(233, 30, 99, 0.4)';
             ctx.lineWidth = 2;
             ctx.beginPath();
             
@@ -3873,22 +3875,62 @@
             }
             ctx.stroke();
             
-            // Blue border
-            ctx.strokeStyle = '#0099ff';
+            // RED border (like JetPlan)
+            ctx.strokeStyle = '#e91e63';
             ctx.lineWidth = 3;
             ctx.setLineDash([]);
             ctx.strokeRect(minX, minY, width, height);
             
-            // "+" indicator where new element will be placed
-            const rightEl = groupElements.reduce((right, el) => el.x > right.x ? el : right, groupElements[0]);
-            const plusX = rightEl.x + SYMBOL_SIZE + 15;
-            const plusY = rightEl.y;
+            // "+" indicator or exact cursor position in edit mode
+            if (state.dropZoneEditMode && state.dragOverCoords) {
+                // Edit mode: Show cursor position indicator
+                const cursorX = state.dragOverCoords.x;
+                const cursorY = state.dragOverCoords.y;
+                
+                // Draw crosshair at cursor position
+                ctx.strokeStyle = '#e91e63';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 2]);
+                ctx.beginPath();
+                ctx.moveTo(cursorX - 15, cursorY);
+                ctx.lineTo(cursorX + 15, cursorY);
+                ctx.moveTo(cursorX, cursorY - 15);
+                ctx.lineTo(cursorX, cursorY + 15);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Draw circle at exact drop position
+                ctx.fillStyle = 'rgba(233, 30, 99, 0.5)';
+                ctx.beginPath();
+                ctx.arc(cursorX, cursorY, SYMBOL_SIZE/2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#e91e63';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            } else {
+                // Normal mode: Show "+" indicator where new element will be placed
+                const rightEl = groupElements.reduce((right, el) => el.x > right.x ? el : right, groupElements[0]);
+                const plusX = rightEl.x + SYMBOL_SIZE + 15;
+                const plusY = rightEl.y;
+                
+                ctx.fillStyle = '#e91e63';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('+', plusX, plusY);
+            }
             
-            ctx.fillStyle = '#0099ff';
-            ctx.font = 'bold 24px Arial';
+            // Show edit mode status
+            ctx.fillStyle = 'rgba(233, 30, 99, 0.9)';
+            ctx.font = 'bold 11px Arial';
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('+', plusX, plusY);
+            if (state.dropZoneEditMode) {
+                ctx.fillText('✓ Bearbeiten-Modus aktiv', (minX + maxX) / 2, maxY + 15);
+            } else if (state.dropZoneHoverTime && Date.now() - state.dropZoneHoverTime > 300) {
+                // Show progress towards edit mode
+                const progress = Math.min(100, ((Date.now() - state.dropZoneHoverTime) / 800) * 100);
+                ctx.fillText(`Halten für Bearbeiten... ${Math.round(progress)}%`, (minX + maxX) / 2, maxY + 15);
+            }
             
             ctx.restore();
         }
@@ -7594,7 +7636,7 @@
             canvasContainer.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 
-                // Track drag position for blue drop zone (JetPlan style)
+                // Track drag position for RED drop zone (JetPlan style)
                 if (state.isDraggingFromSidebar) {
                     const rect = canvas.getBoundingClientRect();
                     const x = (e.clientX - rect.left - state.panX) / state.zoom;
@@ -7613,6 +7655,18 @@
                         }
                     });
                     
+                    // Track hover time for edit mode (JetPlan: long hover opens edit mode)
+                    if (foundTarget !== state.dropZoneTarget) {
+                        state.dropZoneHoverTime = foundTarget ? Date.now() : null;
+                        state.dropZoneEditMode = false;
+                    } else if (foundTarget && state.dropZoneHoverTime && !state.dropZoneEditMode) {
+                        // Check if hover time exceeds threshold (800ms for edit mode)
+                        if (Date.now() - state.dropZoneHoverTime > 800) {
+                            state.dropZoneEditMode = true;
+                            showToast('Bearbeiten-Modus: Element präzise positionieren', 'info');
+                        }
+                    }
+                    
                     state.dropZoneTarget = foundTarget;
                     render();
                 }
@@ -7622,15 +7676,23 @@
                 if (state.isDraggingFromSidebar) {
                     state.dropZoneTarget = null;
                     state.dragOverCoords = null;
+                    state.dropZoneHoverTime = null;
+                    state.dropZoneEditMode = false;
                     render();
                 }
             });
             
             canvasContainer.addEventListener('drop', (e) => {
                 e.preventDefault();
+                const wasEditMode = state.dropZoneEditMode;
+                const dropTarget = state.dropZoneTarget;
+                const dropCoords = state.dragOverCoords;
+                
                 state.dropZoneTarget = null;
                 state.dragOverCoords = null;
                 state.isDraggingFromSidebar = false;
+                state.dropZoneHoverTime = null;
+                state.dropZoneEditMode = false;
                 
                 if (!state.floorPlanImage) {
                     showToast('Bitte zuerst einen Grundriss hochladen!', 'warning');
@@ -7645,7 +7707,12 @@
                     const x = (e.clientX - rect.left - state.panX) / state.zoom;
                     const y = (e.clientY - rect.top - state.panY) / state.zoom;
                     
-                    addElement(type, x, y);
+                    // If edit mode was active, place at exact position
+                    if (wasEditMode && dropTarget) {
+                        addElementAtExactPosition(type, x, y, dropTarget);
+                    } else {
+                        addElement(type, x, y);
+                    }
                 }
             });
         }
@@ -7835,6 +7902,53 @@
             updateElementList();
             
             showToast(`${config.name} hinzugefügt (${code})`, 'success');
+        }
+        
+        // Add element at exact position (edit mode - JetPlan style)
+        function addElementAtExactPosition(type, x, y, targetElement) {
+            const config = ELEMENT_CONFIG[type];
+            if (!config) return;
+            
+            saveHistory();
+            
+            // In edit mode, element is placed at exact drop position within the group
+            // Use the same height as the target element to join its row
+            const targetHeight = targetElement.height !== undefined ? targetElement.height : 
+                (ELEMENT_CONFIG[targetElement.type]?.height || 30);
+            
+            // Generate unique ID
+            const prefix = config.prefix;
+            if (!state.elementCounts[prefix]) {
+                state.elementCounts[prefix] = 0;
+            }
+            state.elementCounts[prefix]++;
+            const code = `${prefix}${String(state.elementCounts[prefix]).padStart(2, '0')}`;
+            
+            // Use target height (can be adjusted later via context menu)
+            const elementHeight = Math.max(targetHeight, config.minHeight || 0);
+            
+            const element = {
+                id: Date.now(),
+                type: type,
+                name: config.name,
+                code: code,
+                x: x,  // Exact position from drop
+                y: y,  // Exact position from drop
+                rotation: targetElement.rotation || 0,  // Match target rotation
+                height: elementHeight,
+                room: targetElement.room || 'Unzugeordnet',
+                floor: document.getElementById('floorSelect')?.value || 'EG',
+                category: config.category,
+                price: config.price,
+                color: config.color
+            };
+            
+            state.elements.push(element);
+            updateElementCount();
+            render();
+            updateElementList();
+            
+            showToast(`${config.name} präzise platziert (${code})`, 'success');
         }
         
         function updateElementCount() {
