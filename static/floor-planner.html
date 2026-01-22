@@ -2968,6 +2968,9 @@
         <div class="context-menu-item" onclick="rotateElement()">
             <i class="bi bi-arrow-clockwise"></i> Drehen
         </div>
+        <div class="context-menu-item" onclick="detachFromGroup()">
+            <i class="bi bi-box-arrow-right"></i> Aus Gruppe lösen
+        </div>
         <div class="context-menu-item" onclick="editElement()">
             <i class="bi bi-pencil"></i> Bearbeiten
         </div>
@@ -8107,14 +8110,18 @@
         function onCanvasMouseDown(e) {
             const coords = getCanvasCoords(e);
             
-            // Middle mouse button (wheel click) = always pan
-            if (e.button === 1) {
+            // Middle mouse button (wheel click) OR Right mouse button = always pan
+            if (e.button === 1 || e.button === 2) {
                 e.preventDefault();
                 state.isPanning = true;
                 state.panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
                 canvas.style.cursor = 'grabbing';
                 return;
             }
+            
+            // Track mouse down time for long-press pan
+            state.mouseDownTime = Date.now();
+            state.mouseDownCoords = { x: e.clientX, y: e.clientY };
             
             if (state.currentTool === 'select') {
                 // Check if clicking on element first
@@ -8161,18 +8168,30 @@
                     return;
                 }
                 
-                // Nothing clicked - start SELECTION BOX (not panning)
+                // Nothing clicked - start SELECTION BOX or PAN after long press
                 state.selectedElement = null;
                 state.selectedRoom = null;
                 state.selectedElements = [];
                 hidePropertiesPanel();
                 hideRoomPropertiesPanel();
                 
-                // Start selection box
+                // Start selection box (will convert to pan if held long)
                 state.isSelectionBox = true;
                 state.selectionBoxStart = coords;
                 state.selectionBoxCurrent = coords;
                 canvas.style.cursor = 'crosshair';
+                
+                // Long press timer - after 300ms switch to panning
+                state.longPressTimer = setTimeout(() => {
+                    if (state.isSelectionBox && !state.isDragging) {
+                        state.isSelectionBox = false;
+                        state.selectionBoxStart = null;
+                        state.isPanning = true;
+                        state.panStart = { x: state.mouseDownCoords.x - state.panX, y: state.mouseDownCoords.y - state.panY };
+                        canvas.style.cursor = 'grabbing';
+                    }
+                }, 300);
+                
                 render();
             } else if (state.currentTool === 'pan') {
                 state.isPanning = true;
@@ -8274,6 +8293,12 @@
         }
         
         function onCanvasMouseUp(e) {
+            // Clear long-press timer
+            if (state.longPressTimer) {
+                clearTimeout(state.longPressTimer);
+                state.longPressTimer = null;
+            }
+            
             if (state.isDrawing && state.currentTool === 'room') {
                 const coords = getCanvasCoords(e);
                 const width = coords.x - state.drawStart.x;
@@ -9607,6 +9632,18 @@
             // Also handle room deletion with Delete key
             if (state.selectedRoom) {
                 deleteRoom();
+            }
+        }
+        
+        function detachFromGroup() {
+            // Move selected element away from group (offset by 100px)
+            if (state.selectedElement) {
+                saveHistory();
+                state.selectedElement.x += 100;
+                state.selectedElement.y += 50;
+                hideContextMenu();
+                render();
+                showToast('Element aus Gruppe gelöst', 'success');
             }
         }
         
